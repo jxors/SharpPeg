@@ -1,0 +1,32 @@
+﻿# From rfc4291
+
+HexDigit <- [0-9A-Fa-f]
+Hextet <- HexDigit (HexDigit (HexDigit (HexDigit)?)?)? (![.])
+
+FullHighOrder16Bits <- Hextet (':' Hextet)^6
+CollapsedHighOrder16Bits <- '::' (Hextet ':')^0..5
+	/ Hextet (':' Hextet)^0 '::' (Hextet ':')^0..4
+	/ Hextet (':' Hextet)^1 '::' (Hextet ':')^0..3
+	/ Hextet (':' Hextet)^2 '::' (Hextet ':')^0..2
+	/ Hextet (':' Hextet)^3 '::' (Hextet ':')^0..1
+	/ Hextet (':' Hextet)^4 '::'
+	/ '::'
+
+export StandardFullAddress <- Hextet (':' Hextet)^7
+export StandardCollapsedAddress <-  ':'  (':' Hextet)^1..7
+	/ Hextet (':' Hextet)^0 '::' (Hextet (':' Hextet)^0..5)?
+	/ Hextet (':' Hextet)^1 '::' (Hextet (':' Hextet)^0..4)?
+	/ Hextet (':' Hextet)^2 '::' (Hextet (':' Hextet)^0..3)?
+	/ Hextet (':' Hextet)^3 '::' (Hextet (':' Hextet)^0..2)?
+	/ Hextet (':' Hextet)^4 '::' (Hextet (':' Hextet)^0..1)?
+	/ Hextet (':' Hextet)^5 '::' (Hextet)?
+	/ Hextet (':' Hextet)^6 '::'
+
+export AlternativeFullAddress <- FullHighOrder16Bits Net::Ipv4::Address
+export AlternativeCollapsedAddress <- CollapsedHighOrder16Bits Net::Ipv4::Address
+
+export FullAddress <- AlternativeFullAddress / StandardFullAddress
+export CollapsedAddress <- AlternativeCollapsedAddress / StandardCollapsedAddress
+
+export Address <- CollapsedAddress / FullAddress
+export CidrAddress <- Address '/' ([0-5][0-9] / '6'[0-4])

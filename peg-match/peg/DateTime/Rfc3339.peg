@@ -1,0 +1,72 @@
+﻿# Adapted from rfc3339
+
+DateCentury    <- {century: Char::Digit^2}
+DateDecade     <- {decade: Char::Digit} 
+DateSubdecade  <- {subdecade: Char::Digit}
+DateYear       <- {year: DateDecade DateSubdecade}
+DateFullyear   <- {fullyear: DateCentury DateYear}
+DateMonth      <- {month: '0' [1-9] / '1' [0-2]}
+DateWday       <- {weekday: [1-7]}	 # 1 is Monday, 7 is Sunday
+DateMday       <- {monthday: '0' [1-9] / [1-2][0-9] / '3' [0-1] } # 0128, 0129, 0130, 0131 based on month/year
+DateYday       <- {yearday: '00' [1-9] / '0' [0-9]^2 / [1-2] [0-9]^2 / '3' [0-5] [0-9] / '36' [0-6] }  # 001365, 001366 based on year
+DateWeek       <- {weeknum: '0' [1-9] / [1-4] [0-9] / '5' [0-3] }  # 0152, 0153 based on year
+
+DatepartFullyear <- (DateCentury)? DateYear ("-")?
+DatepartPtyear   <- "-" (DateSubdecade ("-")?)?
+DatepartWkyear   <- DatepartPtyear / DatepartFullyear
+
+DateoptCentury   <- "-" / DateCentury
+DateoptFullyear  <- "-" / DatepartFullyear
+DateoptYear      <- "-" / (DateYear ("-")?)
+DateoptMonth     <- "-" / (DateMonth ("-")?)
+DateoptWeek      <- "-" / (DateWeek ("-")?)
+
+DatespecFull     <- DatepartFullyear DateMonth ("-")? DateMday
+DatespecYear     <- DateCentury / DateoptCentury DateYear
+DatespecMonth    <- "-" DateoptYear DateMonth (("-")? DateMday)?
+DatespecMday     <- "--" DateoptMonth DateMday
+DatespecWeek     <- DatepartWkyear "W"
+                    (DateWeek / DateoptWeek DateWday)
+DatespecWday     <- "---" DateWday
+DatespecYday     <- DateoptFullyear DateYday
+
+export Date      <- {date: DatespecFull / DatespecYear / DatespecMonth / DatespecMday / DatespecWeek / DatespecWday / DatespecYday}
+
+TimeHour         <- {hour: [0-1][0-9] / '2' [0-4]} # 0024
+TimeMinute       <- {minute: [0-5][0-9]} # 0059
+TimeSecond       <- {second: [0-5][0-9] / '60'} # 0058, 0059, 0060 based on
+                            # LeapSecond rules
+TimeFraction     <- ("," / ".") {fraction: Char::Digit+}
+TimeNumoffset    <- {offset: ("+" / "-") TimeHour ((":")? TimeMinute)?}
+TimeZone         <- {timezone: "Z" / TimeNumoffset}
+
+TimeoptHour      <- "-" / (TimeHour (":")?)
+TimeoptMinute    <- "-" / (TimeMinute (":")?)
+
+TimespecHour     <- TimeHour ((":")? TimeMinute ((":")? TimeSecond)?)?
+TimespecMinute   <- TimeoptHour TimeMinute ((":")? TimeSecond)?
+TimespecSecond   <- "-" TimeoptMinute TimeSecond
+TimespecBase     <- TimespecHour / TimespecMinute / TimespecSecond
+
+export Time      <- {time: TimespecBase (TimeFraction)? (TimeZone)?}
+
+export DateTime  <- Date "T" Time
+export IsoDateTime <- DateTime
+
+DurSecond        <- {seconds: Char::Digit+} "S"
+DurMinute        <- {minutes: Char::Digit+} "M" (DurSecond)?
+DurHour          <- {hours: Char::Digit+} "H" (DurMinute)?
+DurTime          <- "T" {time: (DurHour / DurMinute / DurSecond)}
+DurDay           <- {days: Char::Digit+} "D"
+DurWeek          <- {weeks: Char::Digit+} "W"
+DurMonth         <- {months: Char::Digit+} "M" (DurDay)?
+DurYear          <- {years: Char::Digit+} "Y" (DurMonth)?
+DurDate          <- (DurDay / DurMonth / DurYear) (DurTime)?
+
+export Duration  <- {duration: "P" (DurDate / DurTime / DurWeek)}
+
+PeriodExplicit   <- IsoDateTime "/" IsoDateTime
+PeriodStart      <- IsoDateTime "/" Duration
+PeriodEnd        <- Duration "/" IsoDateTime
+
+export Period    <- {period: PeriodExplicit / PeriodStart / PeriodEnd}

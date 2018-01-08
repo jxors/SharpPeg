@@ -1,0 +1,10 @@
+﻿export Whitespace <- [ \t\n\r]
+export WhitespaceWithoutEnters <- [ \t]
+export Digit <- [0-9]
+export Letter <- [A-Za-z]
+export LetterOrDigit <- [A-Za-z0-9]
+export HexDigit <- [A-Fa-f0-9]
+
+export EndOfString <- !.
+
+export Fail <- ((&'a') (!'a'))

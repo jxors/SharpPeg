@@ -1,0 +1,6 @@
+﻿Set<Inner> <- '(' Inner ')' / Inner
+Separator <- [-.] / Char::Whitespace*
+
+export NationalPhone <- {number: Set<\(Char::Digit^3)> Separator Char::Digit^3 Separator Char::Digit^4 ![0-9] }
+export InternationalPhone <- ({countrycode: '+' Char::Digit^2} Separator NationalPhone / {countrycode: '+' Char::Digit^1} Separator NationalPhone)
+export Phone <- InternationalPhone / NationalPhone

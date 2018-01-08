@@ -1,0 +1,3 @@
+﻿
+export Quoted<A, QuoteChar> <- QuoteChar (!QuoteChar A / '\\' QuoteChar) QuoteChar
+export Quoted<A> <- Quoted<A, \('"')>

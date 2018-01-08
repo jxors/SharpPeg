@@ -1,0 +1,52 @@
+﻿# From rfc3986 Appendix A
+
+SubDelims <- '!' / '$' / '&' / '\'' / '(' / ')' / '*' / '+' / ',' / ';' / '='
+GenDelims <- ':' / '/' / '?' / '#' / '[' / ']' / '@'
+Reserved <- GenDelims / SubDelims
+Unreserved <- Char::LetterOrDigit / '-' / '.' / '_' / '~'
+
+PctEncoded <- '%' Char::HexDigit Char::HexDigit
+Pchar <- Unreserved / PctEncoded / SubDelims / ':' / '@'
+
+CommonQueryPart <- ((![=&]) Pchar)*
+CommonQuery <- String::Join<\('&'), \({parameter[]: {key: CommonQueryPart} '=' {value: CommonQueryPart}})>
+
+Fragment <- {fragment: (Pchar / '/' / '?')* }
+Query <- {query: (&CommonQuery)?  (Pchar / '/' / '?')* }
+
+Segment <- Pchar*
+SegmentNz <- Pchar+
+SegmentNzNc <- (Unreserved / PctEncoded / SubDelims / '@')+
+
+PathEmpty <- e
+PathRootless <- SegmentNz ('/' Segment)*
+PathNoscheme <- SegmentNzNc ('/' Segment)*
+PathAbsolute <- '/' PathRootless?
+PathAbempty <- ('/' Segment)*
+
+export Path <- PathAbempty / PathAbsolute / PathNoscheme / PathRootless / PathEmpty
+RegName <- {domain-name: (Unreserved / PctEncoded / SubDelims)* }
+
+IpLiteral <- {ip-literal: '[' (Net::Ipv6::Address / Net::IpvFuture::Address) ']'}
+Ipv4 <- {ipv4: Net::Ipv4::Address}
+Port <- {port: Char::Digit*}
+export Host <- {host: IpLiteral / Ipv4 / RegName}
+export Userinfo <- {userinfo: (Unreserved / PctEncoded / SubDelims / ':')* }
+export Authority <- (Userinfo '@')? Host (':' Port)?
+
+export Scheme <- {scheme: Char::Letter (Char::LetterOrDigit / '+' / '-' / '.')*}
+
+export RelativePart <- '//' Authority PathAbempty / PathAbsolute / PathNoscheme / PathEmpty
+export RelativeRef <- RelativePart ('?' Query)? ('#' Fragment)?
+
+HierPartWithAuthority <- '//' Authority {path: PathAbempty} 
+HierPart <- HierPartWithAuthority / {path: PathAbsolute / PathRootless / PathEmpty}
+
+export AbsoluteUri<HierPartSpecifier> <- Scheme ':' HierPartSpecifier ('?' Query)?
+export AbsoluteUri <- AbsoluteUri<HierPart>
+export Uri <- AbsoluteUri<HierPart> ('#' Fragment)?
+export UriReference <- Uri / RelativeRef
+
+export UriWithAuthority<SchemeSpecifier> <- (&SchemeSpecifier) AbsoluteUri<HierPartWithAuthority> ('#' Fragment)?
+
+export WebAddress <- UriWithAuthority<\('http' / 'https')>

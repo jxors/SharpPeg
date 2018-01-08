@@ -1,0 +1,4 @@
+﻿# Adapted from rfc4180
+
+NonEscaped<Separator> <- (!Separator) .
+export Record<Separator> <- Test4::Join<Separator, NonEscaped<Separator>>

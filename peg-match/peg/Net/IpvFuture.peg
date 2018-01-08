@@ -1,0 +1,7 @@
+﻿# From rfc4291
+
+SubDelims <- '!' / '$' / '&' / '\'' / '(' / ')' / '*' / '+' / ',' / ';' / '='
+Unreserved <- Char::LetterOrDigit / '-' / '.' / '_' / '~'
+HexDigit <- [0-9A-Fa-f]
+
+export Address <- 'v' HexDigit+ '.' (Unreserved / SubDelims / ':')+

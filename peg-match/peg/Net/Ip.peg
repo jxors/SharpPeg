@@ -1,0 +1,4 @@
+﻿# Wrapper for matching either ipv4 or ipv6 addresses
+
+export Address <- Net::Ipv4::Address / Net::Ipv6::Address / Net::IpvFuture::Address
+export CidrAddress <- Net::Ipv4::CidrAddress / Net::Ipv6::CidrAddress

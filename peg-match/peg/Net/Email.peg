@@ -1,0 +1,131 @@
+﻿# Adapted from https://github.com/larb/email_address_validator/blob/master/grammars/rfc2822.kpeg, which is licensed under the MIT license:
+# 
+# The MIT License
+# 
+# Copyright (c) 2011 Evan Phoenix and Andrew Cholakian
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the 'Software'), to deal in the Software without restriction, including  without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to  the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO  EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE  #OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Wsp <- " " / '\t'
+
+Lf   <- '\n'
+Cr   <- '\r'
+
+Crlf <- Cr Lf
+
+Alpha <- [A-Za-z]
+
+Digit <- [0-9]
+
+NoWsCtl <- [\001-\010\013\014\016-\037\177]
+
+Text <- [\001-\011\013\014\016-\177] / ObsText
+
+QuotedPair <- "\\" Text / ObsQp
+
+Fws <- (Wsp* Crlf)? Wsp+
+    / ObsFws
+
+Ctext <- NoWsCtl / [\041-\047\052-133\135-\176]
+
+Ccontent <- Ctext / QuotedPair / Comment
+
+Comment <- "(" (Fws? Ccontent)* Fws? ")"
+
+Cfws <- (Fws? Comment)* ((Fws? Comment) / Fws)
+
+Atext <- Alpha / Digit
+      / "!" / "#"
+      / "$" / "%"
+      / "&" / "'"
+      / "*" / "+"
+      / "-" / "/"
+      / "<-" / "?"
+      / "^" / "_"
+      / "`" / "{"
+      / "/" / "}"
+      / "~"
+
+Atom <- Cfws? Atext+ Cfws?
+
+DotAtom <- Cfws? DotAtomText Cfws?
+
+DotAtomText <- Atext+ ("." Atext+)*
+
+Qtext <- NoWsCtl / [\041\043-\133\135-\176]
+
+Qcontent <- Qtext / QuotedPair
+
+QuotedString <- Cfws? "\"" (Fws? Qcontent)* Fws? "\"" Cfws?
+
+Word <- Atom / QuotedString
+
+Phrase <- Word+ / ObsPhrase
+
+Utext <- NoWsCtl
+      / [\041-\176]
+      / ObsUtext
+
+Unstructured <- (Fws? Utext)* Fws?
+
+export Address <- {address: Mailbox / Group}
+
+Mailbox <- NameAddr / AddrSpec
+
+NameAddr <- DisplayName? AngleAddr
+
+AngleAddr <- Cfws? "<" AddrSpec ">" Cfws?
+           / ObsAngleAddr
+
+export Group <- DisplayName ":" (MailboxList / Cfws)? ";" Cfws?
+
+DisplayName <- {display_name: Phrase}
+
+export MailboxList <- Mailbox ("," Mailbox)* / ObsMboxList
+
+export AddressList <- Address ("," Address)* / ObsAddrList
+
+export AddrSpec <- LocalPart "@" Domain
+
+LocalPart <- {local_part: DotAtom / QuotedString / ObsLocalPart}
+
+Domain <- {domain: (&Net::Rfc1123::Domain) DotAtom / DomainLiteral / (&Net::Rfc1123::Domain) ObsDomain}
+
+DomainLiteral <- Cfws? "[" (Fws? Dcontent)* Fws? "]" Cfws?
+
+Dcontent <- Dtext / QuotedPair
+
+Dtext <- NoWsCtl / [\041-\132\136-\176]
+
+ObsQp <- "\\" [\000-\177]
+
+ObsText <- Lf* Cr* (ObsChar Lf* Cr*)*
+
+ObsChar <-[\000-\010\013\014\016-\177]
+
+ObsUtext <- ObsText
+
+ObsPhrase <- Word (Word / "." / Cfws)*
+
+ObsPhraseList <- Phrase
+                / (Phrase? Cfws? "," Cfws?)+ Phrase?
+
+ObsFws <- Wsp+ (Crlf Wsp+)*
+
+ObsAngleAddr <- Cfws? "<" ObsRoute? AddrSpec ">" Cfws?
+
+ObsRoute <- Cfws? ObsDomainList ":" Cfws?
+
+ObsDomainList <- "@" Domain ((Cfws / ",")* Cfws? "@" Domain)*
+
+ObsLocalPart <- Word ("." Word)*
+
+ObsDomain <- Atom ("." Atom)*
+
+export ObsMboxList <- (Address? Cfws? "," Cfws?)+ Address?
+
+ObsAddrList <- (Address Cfws "," Cfws)+ Address

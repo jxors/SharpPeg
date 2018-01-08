@@ -1,0 +1,11 @@
+﻿# Adapted from rfc4180
+
+Escaped <- '"' ('""' / ((!'"') .))* '"'
+NonEscaped<Separator> <- ((!'\r') (!'\n') (!Separator) .)+
+
+export Field<Separator> <- {field: Escaped / NonEscaped<Separator>}
+
+export Record<Separator> <- {fields[]: (&.) Field<Separator> (Separator Field<Separator>?)*} # At least one field per record
+
+export CsvFile<Separator> <- {records[]: String::Join<\(('\n' / '\r')+), Record<Separator>>}
+export CsvFile <- CsvFile<\(',')>

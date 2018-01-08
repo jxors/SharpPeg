@@ -1,0 +1,13 @@
+﻿AtomText       <- [a-zA-Z0-9!#$%&'*+\-/=?^_`{}|~]
+Whitespace     <- [ \n\r\t]
+			   
+Atom           <- AtomText+
+DotAtom        <- Atom ("." Atom)*
+			   
+QuotedText     <- [!#-\[\]-~]
+QuotedPair     <- ("\\" ([!-~] / Whitespace))
+QuotedString   <- '"' (QuotedText / QuotedPair)* '"'
+			   
+LocalPart      <- DotAtom / QuotedString
+Domain         <- DotAtom
+export Address <- LocalPart "@" Domain

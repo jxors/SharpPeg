@@ -1,0 +1,4 @@
+﻿
+Octet <- '25'[0-5] / '2'[0-4][0-9] / [0-1][0-9][0-9] / [0-9][0-9] / [0-9]
+export Address <- Octet '.' Octet '.' Octet '.' Octet
+export CidrAddress <- Address '/' ([0-2][0-9] / '3'[0-2])

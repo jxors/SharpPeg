@@ -1,0 +1,11 @@
+﻿# Adapted from RFC1123
+
+LetterDigitOrHyphen <- Char::LetterOrDigit / '-'
+
+# TODO: This breaks when using Char::LetterOrDigit
+LdhStr <- String::Until<LetterDigitOrHyphen, \(Char::Letter / Char::Digit)>
+
+export Label <- {label: (!LetterDigitOrHyphen^64) Char::LetterOrDigit LdhStr?}
+
+# TODO: Limit to max 255 chars
+export Domain <- {domain: String::Join<\('.'), Label>}
