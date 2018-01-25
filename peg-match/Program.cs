@@ -32,6 +32,12 @@ namespace PegMatch
                 "Output matches as structured JSON data. Captures can be used to split data into separate JSON fields. Like this: {name: expression}",
                 CommandOptionType.NoValue);
 
+            var captureGroup = commandLineApplication.Option(
+                "-c | --capture-group",
+                "Prints the capture group instead of the entire match.",
+                CommandOptionType.SingleValue
+            );
+
             var libraryDirs = commandLineApplication.Option("-l |--libraries", "Additional PEG library paths.", CommandOptionType.MultipleValue);
 
             commandLineApplication.HelpOption("-? | -h | --help");
@@ -46,7 +52,7 @@ namespace PegMatch
 
                 try
                 {
-                    var captureKeyAllocator = outputJson.HasValue() ? new CaptureKeyAllocator() : null;
+                    var captureKeyAllocator = outputJson.HasValue() || captureGroup.HasValue() ? new CaptureKeyAllocator() : null;
 
                     var loader = new PegLoader(CreateLibraryPaths(libraryDirs), captureKeyAllocator);
                     var inputFiles = LoadInputAsync(files.Values).ToArray();
@@ -72,6 +78,17 @@ namespace PegMatch
                                 var conv = new CapturesToNodesConverter(new string(text.Data), captureKeyAllocator, captures);
                                 var json = new NodeToJsonConverter(conv.ToNodes(), settings);
                                 Console.WriteLine(json.ToJson());
+                            }
+                            else if(captureGroup.HasValue())
+                            {
+                                var key = captureKeyAllocator[captureGroup.Value()];
+                                foreach (var capture in captures)
+                                {
+                                    if (capture.Key == key)
+                                    {
+                                        Console.WriteLine($"{fileName}: {new string(text.Data, capture.StartPosition, capture.EndPosition - capture.StartPosition)}");
+                                    }
+                                }
                             }
                             else
                             {

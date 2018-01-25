@@ -55,6 +55,8 @@ namespace SharpPeg.Optimizations.Default
                     return IsNeeded(context, i + 1);
                 case InstructionType.Jump:
                     return IsNeeded(context, context.GetLabelPosition(context[i].Label));
+                case InstructionType.Return when context[i].Data1 == 0:
+                    return false;
                 default:
                     return true;
             }

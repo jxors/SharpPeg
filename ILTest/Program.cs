@@ -67,13 +67,17 @@ namespace ILTest
             //var a = new Pattern("A");
             //a.Data = new PrioritizedChoice(new Sequence(letters, a), new Empty());
             //var p = new Sequence(letters, a);
-            var p = Operator.EndingWithGreedy(capitalsAndNonCapitals, CharacterClass.String("ing"));
+            var p = new Sequence(new PrioritizedChoice('T', 'R'), "om");//Operator.EndingWithGreedy(capitalsAndNonCapitals, CharacterClass.String("ing"));
             //var p = helper.ParseExpression(patternStr);
 
             var s2 = new Stopwatch();
             s2.Start();
 
-            var peg = new Pattern("SimpleMatch") { Data = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, p), new Any())) };
+            var peg = new Pattern("SimpleMatch")
+            {
+                Data = p,
+                //Data = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, p), new Any()))
+            };
             var pattern = CompileAndWritePatternToFile("SimpleMatch", peg);
             Console.WriteLine($"Saved ({s2.ElapsedMilliseconds}ms)");
 

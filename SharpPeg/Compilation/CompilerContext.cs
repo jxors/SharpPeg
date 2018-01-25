@@ -57,6 +57,7 @@ namespace SharpPeg.Compilation
 
         public void Flush()
         {
+            boundsCheckPosition = -1;
             if (DelayedAdvance > 0)
             {
                 instructions.Add(Instruction.Advance(DelayedAdvance));

@@ -47,7 +47,7 @@ namespace SharpPeg.Optimizations.Default.Analyzers
 
         public EvaluationResult CheckBounds(int pos, bool firstInstructionWasJump, int offset)
         {
-            if (pos <= 0)
+            if (pos < 0)
             {
                 return EvaluationResult.Inconclusive;
             }
