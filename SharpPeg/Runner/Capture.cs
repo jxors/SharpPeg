@@ -14,7 +14,7 @@ namespace SharpPeg.Runner
 
         public int OpenIndex { get; }
 
-        private int BasePosition { get; }
+        public int BasePosition { get; }
         
         public Capture(int key, int startPosition, int endPosition, int openIndex, int basePosition)
         {

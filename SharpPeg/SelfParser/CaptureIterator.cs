@@ -14,12 +14,14 @@ namespace SharpPeg.SelfParser
             public int OpenIndex { get; }
 
             public T Data { get; }
+            public int CloseIndex { get; }
 
             public CaptureEntry(Capture capture, T data)
             {
                 this.StartIndex = capture.StartPosition;
                 this.EndIndex = capture.EndPosition;
                 this.OpenIndex = capture.OpenIndex;
+                CloseIndex = capture.BasePosition;
                 this.Data = data;
             }
         }
@@ -53,7 +55,7 @@ namespace SharpPeg.SelfParser
                     while (capturedObjects.Count > 0)
                     {
                         var top = capturedObjects.Peek();
-                        if (top.StartIndex >= capture.StartPosition && top.EndIndex <= capture.EndPosition && top.OpenIndex >= capture.OpenIndex)
+                        if (top.StartIndex >= capture.StartPosition && top.EndIndex <= capture.EndPosition && top.OpenIndex >= capture.OpenIndex && top.CloseIndex <= capture.BasePosition)
                         {
                             parameters.Add(capturedObjects.Pop().Data);
                         }
