@@ -76,8 +76,8 @@ namespace SharpPegTests
 
             Assert.AreEqual(3, captures.Count);
             Assert.AreEqual("a", captures[0]);
-            Assert.AreEqual("a", captures[1]);
-            Assert.AreEqual("", captures[2]);
+            Assert.AreEqual("", captures[1]);
+            Assert.AreEqual("a", captures[2]);
         }
 
         [TestMethod]

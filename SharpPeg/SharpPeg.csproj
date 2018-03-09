@@ -4,13 +4,14 @@
     <TargetFrameworks>netstandard1.6;net452</TargetFrameworks>
     <OutputTypeEx>library</OutputTypeEx>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <AssemblyVersion>1.2.0.0</AssemblyVersion>
-    <FileVersion>1.2.0.0</FileVersion>
+    <AssemblyVersion>1.2.1.0</AssemblyVersion>
+    <FileVersion>1.2.1.0</FileVersion>
     <PackageProjectUrl>https://github.com/Jos635/sharppeg</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Jos635/sharppeg</RepositoryUrl>
     <PackageLicenseUrl>https://github.com/Jos635/SharpPeg/blob/master/LICENSE</PackageLicenseUrl>
+    <Description>A C# implementation of Parsing Expression Grammars, intended to be used as a replacement for regular expressions. SharpPeg will dynamically compile PEGs to CIL, delivering performance similar to that of common regular expression engines.</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">

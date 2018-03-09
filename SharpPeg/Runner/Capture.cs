@@ -38,11 +38,6 @@ namespace SharpPeg.Runner
                 return StartPosition - other.StartPosition;
             }
 
-            if (other.EndPosition != EndPosition)
-            {
-                return other.EndPosition - EndPosition;
-            }
-
             if (other.OpenIndex != OpenIndex)
             {
                 // Sort descending on open index
