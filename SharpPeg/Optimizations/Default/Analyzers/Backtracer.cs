@@ -147,7 +147,6 @@ namespace SharpPeg.Optimizations.Default.Analyzers
                             return CheckCharsInternalHelper(false, pos - 1, hasHitLabel).Advance(instruction.Offset);
                         case InstructionType.Char:
                         case InstructionType.StorePosition:
-                        case InstructionType.DiscardCaptures:
                         case InstructionType.Capture:
                         case InstructionType.BoundsCheck:
                             return CheckCharsInternalHelper(false, pos - 1, hasHitLabel);
@@ -248,7 +247,6 @@ namespace SharpPeg.Optimizations.Default.Analyzers
                             return CheckBoundsInternalHelper(false, pos - 1, hasHitLabel).Advance(instruction.Offset);
                         case InstructionType.Char:
                         case InstructionType.StorePosition:
-                        case InstructionType.DiscardCaptures:
                         case InstructionType.Capture:
                         case InstructionType.BoundsCheck:
                             return CheckBoundsInternalHelper(false, pos - 1, hasHitLabel);
@@ -319,7 +317,6 @@ namespace SharpPeg.Optimizations.Default.Analyzers
                         case InstructionType.Advance:
                         case InstructionType.BoundsCheck:
                         case InstructionType.Char:
-                        case InstructionType.DiscardCaptures:
                         case InstructionType.Capture:
                         case InstructionType.RestorePosition:
                             previous:

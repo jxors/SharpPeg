@@ -16,8 +16,6 @@ namespace SharpPeg.Compilation
 
         public int Count => instructions.Count;
 
-        public int CaptureCount { get; set; } = 0;
-
         public short DelayedAdvance { get; set; } = 0;
 
         public List<CharRange> CharacterRanges { get; } = new List<CharRange>();

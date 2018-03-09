@@ -19,7 +19,6 @@ namespace SharpPeg.Optimizations
             new RemoveUnneededVariableOperationsOptimization(),
             new RemoveUnusedAdvancesOptimization(),
             new DelayBoundsCheckOptimization(),
-            new RemoveUnusedDiscardsOptimization(),
             new DeduplicationOptimization(),
             new RemoveUnusedStorePositionOptimization()
         };

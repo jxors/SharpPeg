@@ -91,11 +91,6 @@ namespace SharpPeg.Compilation
                     var patternInfo = context.PatternInfo[p];
                     if (!(p.Data is Pattern) && (patternInfo.IsRecursive || patternInfo.NumNodes > 16 || patternInfo.PatternCalls.Count > 0))
                     {
-                        if (patternInfo.ContainsCaptures)
-                        {
-                            context.CaptureCount++;
-                        }
-
                         if (!context.PatternIndices.TryGetValue(p, out var patternId))
                         {
                             throw new NotImplementedException();
@@ -116,8 +111,7 @@ namespace SharpPeg.Compilation
                     {
                         context.Flush();
                         var innerFailLabel = context.LabelAllocator++;
-
-                        var cCountBefore = context.CaptureCount;
+                        
                         var variable = StorePosition(context);
                         Compile(n.Child, innerFailLabel, context);
                         context.Flush();
@@ -125,12 +119,6 @@ namespace SharpPeg.Compilation
                         context.Add(Instruction.Jump(failLabel));
                         context.Add(Instruction.MarkLabel(innerFailLabel));
                         context.Add(Instruction.RestorePosition(0, variable));
-
-                        if (cCountBefore != context.CaptureCount)
-                        {
-                            context.CaptureCount = cCountBefore;
-                            context.Add(Instruction.DiscardCaptures());
-                        }
                     }
                     break;
                 case ZeroOrMore zom:
@@ -140,8 +128,7 @@ namespace SharpPeg.Compilation
                         var innerFailLabel = context.LabelAllocator++;
 
                         context.Add(Instruction.MarkLabel(startLabel));
-
-                        var cCountBefore = context.CaptureCount;
+                        
                         var variable = StorePosition(context);
                         Compile(zom.Child, innerFailLabel, context);
                         context.Flush();
@@ -149,12 +136,6 @@ namespace SharpPeg.Compilation
                         context.Add(Instruction.Jump(startLabel));
                         context.Add(Instruction.MarkLabel(innerFailLabel));
                         context.Add(Instruction.RestorePosition(0, variable));
-
-                        if (cCountBefore != context.CaptureCount)
-                        {
-                            context.CaptureCount = cCountBefore;
-                            context.Add(Instruction.DiscardCaptures());
-                        }
                     }
                     break;
                 case PrioritizedChoice pc:
@@ -162,8 +143,7 @@ namespace SharpPeg.Compilation
                         context.Flush();
                         var endLabel = context.LabelAllocator++;
                         var innerFailLabel = context.LabelAllocator++;
-
-                        var cCountBefore = context.CaptureCount;
+                        
                         var variable = StorePosition(context);
                         Compile(pc.ChildA, innerFailLabel, context);
                         context.Flush();
@@ -171,12 +151,6 @@ namespace SharpPeg.Compilation
                         context.Add(Instruction.Jump(endLabel));
                         context.Add(Instruction.MarkLabel(innerFailLabel));
                         context.Add(Instruction.RestorePosition(0, variable));
-
-                        if (cCountBefore != context.CaptureCount)
-                        {
-                            context.CaptureCount = cCountBefore;
-                            context.Add(Instruction.DiscardCaptures());
-                        }
 
                         Compile(pc.ChildB, failLabel, context);
                         context.Flush();
@@ -189,9 +163,8 @@ namespace SharpPeg.Compilation
                         var variable = StorePosition(context);
                         Compile(cg.Child, failLabel, context);
                         context.Flush();
-
-                        context.CaptureCount++;
-                        context.Add(Instruction.Capture(0, variable, (ushort)cg.Key));
+                        
+                        context.Add(Instruction.Capture(variable, (ushort)cg.Key));
                     }
                     break;
                 default:

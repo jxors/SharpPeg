@@ -107,15 +107,12 @@ namespace SharpPeg.Runner.ILRunner
             return errorStr;
         }
 
-        protected void DiscardCaptures(char* currentPos)
+        protected void DiscardCaptures(int newCount)
         {
-            int numToRemove = 0;
-            while(numToRemove < captures.Count && captures[captures.Count - numToRemove - 1].StartIndex >= currentPos)
+            if (newCount < captures.Count)
             {
-                numToRemove++;
+                captures.RemoveRange(newCount, captures.Count - newCount);
             }
-
-            captures.RemoveRange(captures.Count - numToRemove, numToRemove);
         }
 
         protected abstract unsafe char* RunInternal(char* position);

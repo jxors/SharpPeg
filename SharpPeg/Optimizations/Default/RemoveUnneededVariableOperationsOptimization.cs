@@ -26,23 +26,10 @@ namespace SharpPeg.Optimizations.Default
                         if (context[labelPos + 1].Type == InstructionType.RestorePosition && context[labelPos + 1].Data1 == storeInstruction.Data1)
                         {
                             changed = true;
-                            ushort newLabel;
-                            if (context[labelPos + 2].Type == InstructionType.DiscardCaptures)
+                            ushort newLabel = AddStubByPosition(context, labelPos + 2, Instruction.StorePosition(storeInstruction.Data1));
+                            if (labelPos + 2 < i)
                             {
-                                // Create stub that stores position
-                                newLabel = AddStubByPosition(context, labelPos + 3, Instruction.StorePosition(storeInstruction.Data1));
-                                if (labelPos + 3 < i)
-                                {
-                                    i += 4;
-                                }
-                            }
-                            else
-                            {
-                                newLabel = AddStubByPosition(context, labelPos + 2, Instruction.StorePosition(storeInstruction.Data1));
-                                if (labelPos + 2 < i)
-                                {
-                                    i += 4;
-                                }
+                                i += 4;
                             }
 
                             context[i] = Instruction.Jump(newLabel);
@@ -54,10 +41,6 @@ namespace SharpPeg.Optimizations.Default
                     {
                         changed = true;
                         var offset = 3;
-                        if (context[i + 3].Type == InstructionType.DiscardCaptures)
-                        {
-                            offset = 4;
-                        }
 
                         var newLabel = context.LabelAllocator++;
                         context[i] = Instruction.Jump(newLabel);

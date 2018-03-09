@@ -1,6 +1,7 @@
 ﻿using SharpPeg.Common;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace SharpPeg.Runner.Interpreter
 {
@@ -39,6 +40,7 @@ namespace SharpPeg.Runner.Interpreter
         {
             var instructions = method.Instructions;
             var variables = new int[method.VariableCount];
+            var offsets = new int[method.VariableCount];
             var pc = 0;
 
             while(true)
@@ -73,28 +75,23 @@ namespace SharpPeg.Runner.Interpreter
                         success:
                         break;
                     case InstructionType.Capture:
-                        CaptureOutput?.Add(new Capture(instr.Data2, variables[instr.Data1] + instr.Offset, pos, CaptureOutput.Count));
-                        break;
-                    case InstructionType.DiscardCaptures:
-                        if (CaptureOutput != null)
-                        {
-                            var numToRemove = 0;
-                            while (numToRemove < CaptureOutput.Count && CaptureOutput[CaptureOutput.Count - numToRemove - 1].StartPosition >= pos)
-                            {
-                                numToRemove++;
-                            }
-
-                            CaptureOutput.RemoveRange(CaptureOutput.Count - numToRemove, numToRemove);
-                        }
+                        CaptureOutput.Add(new Capture(instr.Data2, variables[instr.Data1], pos, CaptureOutput.Count));
                         break;
                     case InstructionType.Jump:
                         pc = labelPositions[instr.Label];
                         break;
                     case InstructionType.StorePosition:
                         variables[instr.Data1] = pos;
+                        offsets[instr.Data1] = CaptureOutput.Count;
                         break;
                     case InstructionType.RestorePosition:
                         pos = variables[instr.Data1] + instr.Offset;
+
+                        var offset = offsets[instr.Data1];
+                        if (CaptureOutput.Count > offset)
+                        {
+                            CaptureOutput.RemoveRange(offset, CaptureOutput.Count - offset);
+                        }
                         break;
                     case InstructionType.Call:
                         pos = InternalRun(Methods[instr.Data1], LabelPositions[instr.Data1], pos);

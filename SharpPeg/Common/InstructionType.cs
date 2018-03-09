@@ -60,10 +60,5 @@ namespace SharpPeg.Common
         /// Capture _ Offset V CaptureKey
         /// </summary>
         Capture,
-
-        /// <summary>
-        /// DiscardCaptures _ _ _ _
-        /// </summary>
-        DiscardCaptures,
     }
 }

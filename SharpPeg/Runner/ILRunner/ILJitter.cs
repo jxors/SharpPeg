@@ -38,6 +38,7 @@ namespace SharpPeg.Runner.ILRunner
         private readonly FieldInfo capturesField = typeof(BaseJittedRunner).GetField("captures");
         private readonly ConstructorInfo captureConstructor = typeof(TemporaryCapture).GetConstructor(new[] { typeof(int), typeof(char*), typeof(char*) });
         private readonly MethodInfo captureListAddMethod = typeof(List<TemporaryCapture>).GetMethod("Add");
+        private readonly MethodInfo captureListCountMethod = typeof(List<TemporaryCapture>).GetMethod("get_Count");
         private readonly FieldInfo dataPtrField = typeof(BaseJittedRunner).GetField("dataPtr");
         private readonly FieldInfo dataEndPtrField = typeof(BaseJittedRunner).GetField("dataEndPtr");
         private readonly FieldInfo dataSizeField = typeof(BaseJittedRunner).GetField("dataSize");
@@ -150,6 +151,7 @@ namespace SharpPeg.Runner.ILRunner
 
             var generator = methodBuilder.GetILGenerator();
             var variables = Enumerable.Range(0, method.VariableCount).Select(item => new Lazy<LocalBuilder>(() => DeclareLocal(generator, typeof(char*), $"var_{item}"))).ToArray();
+            var countVariables = Enumerable.Range(0, method.VariableCount).Select(item => new Lazy<LocalBuilder>(() => DeclareLocal(generator, typeof(char*), $"count_{item}"))).ToArray();
             var labels = Enumerable.Range(0, method.LabelCount).Select(item => generator.DefineLabel()).ToArray();
             
             var positionLocal = DeclareLocal(generator, typeof(char*), "position");
@@ -265,76 +267,12 @@ namespace SharpPeg.Runner.ILRunner
                             // Chain check
                             generator.Emit(OpCodes.Ldind_U2);
                             generator.Emit(OpCodes.Stloc, currentCharLocal.Value);
-
-
-                            if (false && max - min >= 24 && coverage <= 20 && max - min <= 64)
-                            {
-                                // TODO: Find out if there's a case where the bitmap check actually improves preformance...
-                                EmitPushInt(generator, 1);
-                                generator.Emit(OpCodes.Conv_I8);
-                                generator.Emit(OpCodes.Ldloc, currentCharLocal.Value);
-                                EmitPushInt(generator, min);
-                                generator.Emit(OpCodes.Sub);
-                                generator.Emit(OpCodes.Shl);
-
-                                var bitmap = Enumerable.Range(0, 64)
-                                    .Select(n => chain.Any(instr => n + min >= instr.Data1 && n + min <= instr.Data2) ? 1L << n : 0)
-                                    .Sum();
-
-                                generator.Emit(OpCodes.Ldc_I8, bitmap);
-                                generator.Emit(OpCodes.And);
-
-                                EmitPushInt(generator, 0);
-                                generator.Emit(OpCodes.Beq, labels[lastLabel]);
-                            }
-                            else
-                            {
-                                generator.Emit(OpCodes.Ldloc, currentCharLocal.Value);
-                                EmitPushInt(generator, min);
-                                generator.Emit(OpCodes.Sub);
-                                EmitPushInt(generator, max - min);
-                                generator.Emit(OpCodes.Bgt_Un, labels[lastLabel]);
-                                
-                                //var chars = chain.SelectMany(item => Enumerable.Range(item.Data1, item.Data2 - item.Data1 + 1).Select(c => (char)c)).ToList();
-                                //chars.Sort();
-                                ////var start = chars.First();
-                                ////var lastChar = chars.First();
-                                ////var numPopulated = 1;
-
-                                ////foreach (var c in chars.Skip(1))
-                                ////{
-                                ////    if ((c - start) / (numPopulated) > 4)
-                                ////    {
-                                ////        generator.Emit(OpCodes.Ldloc, currentCharLocal.Value);
-                                ////        EmitPushInt(generator, start);
-                                ////        generator.Emit(OpCodes.Sub);
-                                ////        EmitPushInt(generator, lastChar - start);
-                                ////        generator.Emit(OpCodes.Bgt_Un, labels[lastLabel]);
-
-                                ////        start = c;
-                                ////        numPopulated = 0;
-                                ////    }
-
-                                ////    numPopulated++;
-                                ////    lastChar = c;
-                                ////}
-
-                                ////generator.Emit(OpCodes.Ldloc, currentCharLocal.Value);
-                                ////EmitPushInt(generator, start);
-                                ////generator.Emit(OpCodes.Sub);
-                                ////EmitPushInt(generator, lastChar - start);
-                                ////generator.Emit(OpCodes.Bgt_Un, labels[lastLabel]);
-                                
-                                //generator.Emit(OpCodes.Ldloc, currentCharLocal.Value);
-                                //EmitPushInt(generator, min);
-                                //generator.Emit(OpCodes.Sub);
-                                //var switchLabels = Enumerable
-                                //    .Range(0, max - min + 1)
-                                //    .Select(item => labels[chain.Any(instr => item + min >= instr.Data1 && item + min <= instr.Data2) ? chain.FirstOrDefault(instr => item + min >= instr.Data1 && item + min <= instr.Data2).Label : lastLabel])
-                                //    .ToArray();
-                                //generator.Emit(OpCodes.Switch, switchLabels);
-                                //generator.Emit(OpCodes.Br, labels[lastLabel]);
-                            }
+                            
+                            generator.Emit(OpCodes.Ldloc, currentCharLocal.Value);
+                            EmitPushInt(generator, min);
+                            generator.Emit(OpCodes.Sub);
+                            EmitPushInt(generator, max - min);
+                            generator.Emit(OpCodes.Bgt_Un, labels[lastLabel]);
                             
                             EmitCharacterClassCheck(generator, method, true, currentCharLocal, instruction.Data1, instruction.Data2, true, labels[instruction.Label]);
                         }
@@ -342,68 +280,6 @@ namespace SharpPeg.Runner.ILRunner
                         {
                             EmitCharacterClassCheck(generator, method, false, currentCharLocal, instruction.Data1, instruction.Data2, true, labels[instruction.Label]);
                         }
-                        
-                        //else
-                        //{
-                        //    generator.Emit(OpCodes.Ldind_U2);
-                        //    generator.Emit(OpCodes.Stloc, currentCharLocal.Value);
-
-                        //    var amin = ranges.Min(item => item.Min);
-                        //    var amax = ranges.Max(item => item.Max);
-
-                        //    if (amax - amin < 32)
-                        //    {
-                        //        // TODO: Does this have any performance impact?
-                        //        var bitmap = 0;
-                        //        foreach (var range in ranges)
-                        //        {
-                        //            for (var c = range.Min; c <= range.Max; c++)
-                        //            {
-                        //                bitmap |= 1 << (c - amin);
-                        //            }
-                        //        }
-
-                        //        // Bitmap lookup:
-                        //        // (1 << (c - min)) & bitmap > 0
-                        //        generator.Emit(OpCodes.Ldc_I4_1);
-                        //        generator.Emit(OpCodes.Ldloc, currentCharLocal.Value);
-                        //        EmitPushInt(generator, amin);
-                        //        generator.Emit(OpCodes.Sub);
-                        //        generator.Emit(OpCodes.Shl);
-                        //        EmitPushInt(generator, bitmap);
-                        //        generator.Emit(OpCodes.And);
-                        //        generator.Emit(OpCodes.Ldc_I4_0);
-                        //        generator.Emit(OpCodes.Beq, labels[instruction.Offset]);
-                        //    }
-                        //    else
-                        //    {
-                        //        var success = generator.DefineLabel();
-                        //        foreach (var range in ranges)
-                        //        {
-                        //            generator.Emit(OpCodes.Ldloc, currentCharLocal.Value);
-                        //            if (range.IsSingleChar)
-                        //            {
-                        //                EmitPushInt(generator, range.Min);
-                        //                generator.Emit(OpCodes.Beq, success);
-                        //            }
-                        //            else
-                        //            {
-                        //                // This does (c - min) >= (max - min), which is more efficient than checking c >= min && c <= max, 
-                        //                // because it avoids one branch.
-
-                        //                EmitPushInt(generator, range.Min);
-                        //                generator.Emit(OpCodes.Sub);
-                        //                EmitPushInt(generator, range.Max - range.Min);
-                        //                generator.Emit(OpCodes.Ble_Un, success);
-                        //            }
-                        //        }
-
-                        //        // None match, jump to fail label
-                        //        generator.Emit(OpCodes.Br, labels[instruction.Offset]);
-                        //        generator.MarkLabel(success);
-                        //    }
-                        //}
-
                         break;
                     case InstructionType.Jump:
                         generator.Emit(OpCodes.Br, labels[instruction.Label]);
@@ -430,11 +306,6 @@ namespace SharpPeg.Runner.ILRunner
 
                             // Push startIndex
                             generator.Emit(OpCodes.Ldloc, variables[instruction.Data1].Value);
-                            if (instruction.Offset != 0)
-                            {
-                                EmitPushInt(generator, instruction.Offset * sizeof(char));
-                                generator.Emit(OpCodes.Add);
-                            }
 
                             // Push endIndex
                             generator.Emit(OpCodes.Ldloc, positionLocal);
@@ -446,14 +317,14 @@ namespace SharpPeg.Runner.ILRunner
                         // Insert in captures
                         generator.Emit(OpCodes.Callvirt, captureListAddMethod);
                         break;
-                    case InstructionType.DiscardCaptures:
-                        generator.Emit(OpCodes.Ldarg_0);
-                        generator.Emit(OpCodes.Ldloc, positionLocal);
-                        generator.EmitCall(OpCodes.Call, discardCapturesMethod, null);
-                        break;
                     case InstructionType.StorePosition:
                         generator.Emit(OpCodes.Ldloc, positionLocal);
                         generator.Emit(OpCodes.Stloc, variables[instruction.Data1].Value);
+
+                        generator.Emit(OpCodes.Ldarg_0);
+                        generator.Emit(OpCodes.Ldfld, capturesField);
+                        generator.Emit(OpCodes.Callvirt, captureListCountMethod);
+                        generator.Emit(OpCodes.Stloc, countVariables[instruction.Data1].Value);
                         break;
                     case InstructionType.RestorePosition:
                         generator.Emit(OpCodes.Ldloc, variables[instruction.Data1].Value);
@@ -462,7 +333,12 @@ namespace SharpPeg.Runner.ILRunner
                             EmitPushInt(generator, instruction.Offset * sizeof(char));
                             generator.Emit(OpCodes.Add);
                         }
+
                         generator.Emit(OpCodes.Stloc, positionLocal);
+
+                        generator.Emit(OpCodes.Ldarg_0);
+                        generator.Emit(OpCodes.Ldloc, countVariables[instruction.Data1].Value);
+                        generator.EmitCall(OpCodes.Call, discardCapturesMethod, null);
                         break;
                     case InstructionType.Return:
                         if (instruction.Data1 == 0)

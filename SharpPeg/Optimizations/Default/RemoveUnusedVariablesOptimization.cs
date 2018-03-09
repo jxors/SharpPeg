@@ -115,10 +115,6 @@ namespace SharpPeg.Optimizations.Default
                         {
                             changed = true;
                             context.RemoveAt(i);
-                            if(context[i].Type == InstructionType.DiscardCaptures)
-                            {
-                                context.RemoveAt(i);
-                            }
                         } else if (offset > 0)
                         {
                             changed = true;

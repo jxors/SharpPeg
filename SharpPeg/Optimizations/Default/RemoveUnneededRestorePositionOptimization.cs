@@ -31,11 +31,6 @@ namespace SharpPeg.Optimizations.Default
                                 && positionNotModifiedSinceStoring.Contains(targetInstruction.Data1))
                             {
                                 var offset = 2;
-                                if (context[jumpTarget + offset].Type == InstructionType.DiscardCaptures)
-                                {
-                                    offset++;
-                                }
-
                                 var newLabelId = (ushort)0;
                                 if (context[jumpTarget + offset].Type == InstructionType.MarkLabel)
                                 {
@@ -44,15 +39,13 @@ namespace SharpPeg.Optimizations.Default
                                 else
                                 {
                                     newLabelId = context.LabelAllocator++;
-                                    context.Insert(jumpTarget + offset, new Instruction(InstructionType.MarkLabel, newLabelId));
+                                    context.Insert(jumpTarget + offset, new Instruction(InstructionType.MarkLabel, newLabelId, 0, 0, 0));
                                 }
 
                                 context[i] = new Instruction(context[i].Type, newLabelId, context[i].Offset, context[i].Data1, context[i].Data2);
                                 changed = true;
                             }
                         }
-                        break;
-                    case InstructionType.DiscardCaptures:
                         break;
                     default:
                         positionNotModifiedSinceStoring.Clear();
@@ -139,7 +132,6 @@ namespace SharpPeg.Optimizations.Default
                     return true;
                 case InstructionType.Return:
                 case InstructionType.RestorePosition:
-                case InstructionType.DiscardCaptures:
                     return false;
                 default: throw new NotImplementedException();
             }

@@ -73,13 +73,7 @@ namespace SharpPeg.Optimizations.Default.Analyzers
             var instruction = context[traceResult];
             if (instruction.Matches(InstructionType.RestorePosition))
             {
-                // TODO: Backtracer will return incorrect result, is there any way to make it return correct things to improve
-                // the tracing here?
                 var newStartPos = traceResult + 1;
-                if(context[traceResult + 1].Matches(InstructionType.DiscardCaptures))
-                {
-                    newStartPos++;
-                }
 
                 var traceResult2 = TracePath(context, null, traceResult + 1);
                 if (context[traceResult2].Matches(InstructionType.RestorePosition, out var _, 0))

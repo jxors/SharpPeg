@@ -264,9 +264,6 @@ namespace SharpPeg.Optimizations.Default.Analyzers
                     stack.Push(view.WithAdvancesAndMoveOneForward(view.Vars[instruction.Data1]));
                     break;
                 case InstructionType.MarkLabel:
-                case InstructionType.DiscardCaptures:
-                    stack.Push(view.Move(1));
-                    break;
                 case InstructionType.Capture:
                     if (instruction.Data2 != Variable)
                     {

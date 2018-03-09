@@ -17,7 +17,7 @@ namespace SharpPeg.Common
 
         public ushort Data2 { get; }
 
-        public Instruction(InstructionType type, ushort label = 0, short offset = 0, ushort data1 = 0, ushort data2 = 0)
+        public Instruction(InstructionType type, ushort label, short offset, ushort data1, ushort data2)
         {
             Type = type;
             Label = label;
@@ -26,17 +26,16 @@ namespace SharpPeg.Common
             Data2 = data2;
         }
 
-        public static Instruction BoundsCheck(ushort failLabel, short offset) =>                new Instruction(InstructionType.BoundsCheck, failLabel, offset);
+        public static Instruction BoundsCheck(ushort failLabel, short offset) =>                new Instruction(InstructionType.BoundsCheck, failLabel, offset, 0, 0);
         public static Instruction Char(ushort failLabel, short offset, ushort index, ushort length) =>   new Instruction(InstructionType.Char, failLabel, offset, index, length);
-        public static Instruction Advance(short offset) =>                                      new Instruction(InstructionType.Advance, 0, offset);
-        public static Instruction Call(ushort failLabel, ushort patternIndex) =>                new Instruction(InstructionType.Call, failLabel, 0, patternIndex);
-        public static Instruction Jump(ushort label) =>                                         new Instruction(InstructionType.Jump, label);
-        public static Instruction MarkLabel(ushort label) =>                                    new Instruction(InstructionType.MarkLabel, label);
-        public static Instruction StorePosition(ushort variable) =>                             new Instruction(InstructionType.StorePosition, 0, 0, variable);
-        public static Instruction RestorePosition(short offset, ushort variable) =>             new Instruction(InstructionType.RestorePosition, 0, offset, variable);
-        public static Instruction Return(ushort value) =>                                       new Instruction(InstructionType.Return, 0, 0, value);
-        public static Instruction Capture(short offset, ushort variable, ushort key) =>         new Instruction(InstructionType.Capture, 0, offset, variable, key);
-        public static Instruction DiscardCaptures() =>                                          new Instruction(InstructionType.DiscardCaptures);
+        public static Instruction Advance(short offset) =>                                      new Instruction(InstructionType.Advance, 0, offset, 0, 0);
+        public static Instruction Call(ushort failLabel, ushort patternIndex) =>                new Instruction(InstructionType.Call, failLabel, 0, patternIndex, 0);
+        public static Instruction Jump(ushort label) =>                                         new Instruction(InstructionType.Jump, label, 0, 0, 0);
+        public static Instruction MarkLabel(ushort label) =>                                    new Instruction(InstructionType.MarkLabel, label, 0, 0, 0);
+        public static Instruction StorePosition(ushort variable) =>                             new Instruction(InstructionType.StorePosition, 0, 0, variable, 0);
+        public static Instruction RestorePosition(short offset, ushort variable) =>             new Instruction(InstructionType.RestorePosition, 0, offset, variable, 0);
+        public static Instruction Return(ushort value) =>                                       new Instruction(InstructionType.Return, 0, 0, value, 0);
+        public static Instruction Capture(ushort variable, ushort key) =>                       new Instruction(InstructionType.Capture, 0, 0, variable, key);
 
         public bool HasLabel => Type <= InstructionType.MarkLabel;
 
@@ -82,9 +81,7 @@ namespace SharpPeg.Common
                 case InstructionType.MarkLabel:
                     return $"L{Label}:";
                 case InstructionType.Capture:
-                    return $"  {InstructionType.Capture} +{Offset} V{Data1} K{Data2}";
-                case InstructionType.DiscardCaptures:
-                    return $"  {InstructionType.DiscardCaptures}";
+                    return $"  {InstructionType.Capture} V{Data1} K{Data2}";
             }
 
             throw new NotImplementedException();

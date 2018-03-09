@@ -61,9 +61,6 @@ namespace SharpPegTests
         public void DelayBoundsCheckOptimization() => OptimizationEffectiveness<DelayBoundsCheckOptimization>();
 
         [TestMethod]
-        public void RemoveUnusedDiscardsOptimization() => OptimizationEffectiveness<RemoveUnusedDiscardsOptimization>();
-
-        [TestMethod]
         public void DeduplicationOptimization() => OptimizationEffectiveness<DeduplicationOptimization>();
 
         [TestMethod]
@@ -95,7 +92,6 @@ namespace SharpPegTests
                 new DelayStorePositionOptimization(),
                 new RemoveUnusedAdvancesOptimization(),
                 new DelayBoundsCheckOptimization(),
-                new RemoveUnusedDiscardsOptimization(),
                 new DeduplicationOptimization(),
                 new RemoveUnneededChecksOptimization(true),
                 new RemoveUnneededVariableOperationsOptimization(),

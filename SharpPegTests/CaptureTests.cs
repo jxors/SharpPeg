@@ -1,7 +1,10 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpPeg;
+using SharpPeg.Compilation;
 using SharpPeg.Operators;
+using SharpPeg.Optimizations;
 using SharpPeg.Runner;
+using SharpPeg.Runner.Interpreter;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -31,6 +34,37 @@ namespace SharpPegTests
         }
 
         [TestMethod]
+        public void EmptyCaptureKeep()
+        {
+            var whitespace = new Pattern() { Data = new CaptureGroup(0, Operator.Optional(Operator.OneOrMore(new Pattern { Data = ' ' }))) };
+            var other = new Pattern { Data = new CaptureGroup(1, new PrioritizedChoice(new Pattern { Data = new CaptureGroup(100, "alongstring") }, new Pattern { Data = new Pattern { Data = new CaptureGroup(2, "y_alsoverylong") } })) };
+            var p = new Sequence("if", whitespace, other);
+
+            var captures = Match(p, "ify_alsoverylong");
+
+            Assert.AreEqual(3, captures.Count);
+
+            Assert.IsTrue(captures.Contains(""));
+            Assert.IsTrue(captures.Contains("y_alsoverylong"));
+
+            Assert.IsFalse(captures.Contains("a"));
+            Assert.IsFalse(captures.Contains("x"));
+            Assert.IsFalse(captures.Contains("ax"));
+        }
+
+        [TestMethod]
+        public void EmptyCaptureDiscard()
+        {
+            var whitespace = new Pattern() { Data = new CaptureGroup(0, Operator.Optional(Operator.OneOrMore(new Pattern { Data = ' ' }))) };
+            var other = new Pattern { Data = new CaptureGroup(1, new PrioritizedChoice(new Pattern { Data = new CaptureGroup(100, "alongstring") }, new Pattern { Data = new Pattern { Data = new CaptureGroup(2, "y_alsoverylong") } })) };
+            var p = new Sequence("if", new PrioritizedChoice(new Sequence(whitespace, other), 'x'));
+
+            var captures = Match(p, "ifx");
+
+            Assert.AreEqual(0, captures.Count);
+        }
+
+        [TestMethod]
         public void WordCapture()
         {
             var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, Operator.OneOrMore(letters)), new Any()));
@@ -50,7 +84,7 @@ namespace SharpPegTests
 
         private static List<string> Match(Operator p, string data)
         {
-            var runner = PatternCompiler.Default.Compile(new Pattern() { Data = p });
+            var runner = new PatternCompiler(new Compiler(), new DefaultOptimizer(), new InterpreterJitter()).Compile(new Pattern() { Data = p });
             var captures = new List<Capture>();
             var result = runner.Run(data, captures);
 
