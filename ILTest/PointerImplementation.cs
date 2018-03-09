@@ -17,7 +17,7 @@ namespace ILBenchmark
                     {
                         position++;
                     }
-                    this.captures.Add(new TemporaryCapture(0, position_0, position));
+                    this.captures.Add(new TemporaryCapture(0, 0, position_0, position));
                 }
                 else
                 {

@@ -65,6 +65,22 @@ namespace SharpPegTests
         }
 
         [TestMethod]
+        public void EmptyCaptureOrder()
+        {
+            var whitespace = new Pattern() { Data = new CaptureGroup(0, Operator.Optional(Operator.OneOrMore(new Pattern { Data = ' ' }))) };
+            var name = new Pattern { Data = new CaptureGroup(1, Operator.OneOrMore(new CharacterClass('a', 'z'))) };
+            var var = new Pattern { Data = new CaptureGroup(2, new Sequence(whitespace, name)) };
+            var p = new Sequence("if", var);
+
+            var captures = Match(p, "ifabc");
+
+            Assert.AreEqual(3, captures.Count);
+            Assert.AreEqual("a", captures[0]);
+            Assert.AreEqual("a", captures[1]);
+            Assert.AreEqual("", captures[2]);
+        }
+
+        [TestMethod]
         public void WordCapture()
         {
             var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, Operator.OneOrMore(letters)), new Any()));
@@ -82,9 +98,9 @@ namespace SharpPegTests
             Assert.IsFalse(captures.Contains("..."));
         }
 
-        private static List<string> Match(Operator p, string data)
+        private static List<string> Match(Operator p, string data, bool optimize = true)
         {
-            var runner = new PatternCompiler(new Compiler(), new DefaultOptimizer(), new InterpreterJitter()).Compile(new Pattern() { Data = p });
+            var runner = new PatternCompiler(new Compiler(), optimize ? new DefaultOptimizer() : null, new InterpreterJitter()).Compile(new Pattern() { Data = p });
             var captures = new List<Capture>();
             var result = runner.Run(data, captures);
 

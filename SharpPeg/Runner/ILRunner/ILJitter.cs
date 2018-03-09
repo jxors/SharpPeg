@@ -36,7 +36,7 @@ namespace SharpPeg.Runner.ILRunner
         public bool EnableMemoization { get; set; } = false;
 
         private readonly FieldInfo capturesField = typeof(BaseJittedRunner).GetField("captures");
-        private readonly ConstructorInfo captureConstructor = typeof(TemporaryCapture).GetConstructor(new[] { typeof(int), typeof(char*), typeof(char*) });
+        private readonly ConstructorInfo captureConstructor = typeof(TemporaryCapture).GetConstructor(new[] { typeof(int), typeof(int), typeof(char*), typeof(char*) });
         private readonly MethodInfo captureListAddMethod = typeof(List<TemporaryCapture>).GetMethod("Add");
         private readonly MethodInfo captureListCountMethod = typeof(List<TemporaryCapture>).GetMethod("get_Count");
         private readonly FieldInfo dataPtrField = typeof(BaseJittedRunner).GetField("dataPtr");
@@ -303,6 +303,9 @@ namespace SharpPeg.Runner.ILRunner
                         {
                             // Push key
                             EmitPushInt(generator, (int)instruction.Data2);
+
+                            // Push OpenIndex
+                            generator.Emit(OpCodes.Ldloc, countVariables[instruction.Data1].Value);
 
                             // Push startIndex
                             generator.Emit(OpCodes.Ldloc, variables[instruction.Data1].Value);

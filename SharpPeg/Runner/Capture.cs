@@ -10,38 +10,46 @@ namespace SharpPeg.Runner
 
         public int StartPosition { get; }
 
-        public int EndPosition { get; set; }
+        public int EndPosition { get; }
 
-        public int CloseIndex { get; set; }
+        public int OpenIndex { get; }
 
-        public Capture(int key, int startPosition) : this(key, startPosition, 0, 0)
-        { }
-
-        public Capture(int key, int startPosition, int endPosition, int closeIndex)
+        private int BasePosition { get; }
+        
+        public Capture(int key, int startPosition, int endPosition, int openIndex, int basePosition)
         {
             Key = key;
             StartPosition = startPosition;
             EndPosition = endPosition;
-            CloseIndex = closeIndex;
+            OpenIndex = openIndex;
+            BasePosition = basePosition;
         }
 
         public override string ToString()
         {
-            return $"Capture #{Key}: ({StartPosition}...{EndPosition}) CloseIndex={CloseIndex}";
+            return $"Capture #{Key}: ({StartPosition}...{EndPosition}) OpenIndex={OpenIndex}";
         }
 
         public int CompareTo(Capture other)
         {
-            if(other.StartPosition == StartPosition)
-            {
-                // Sort descending on close index
-                return other.CloseIndex - CloseIndex;
-            }
-            else
+            if (other.StartPosition != StartPosition)
             {
                 // Sort ascending on start position
                 return StartPosition - other.StartPosition;
             }
+
+            if (other.EndPosition != EndPosition)
+            {
+                return other.EndPosition - EndPosition;
+            }
+
+            if (other.OpenIndex != OpenIndex)
+            {
+                // Sort descending on open index
+                return OpenIndex - other.OpenIndex;
+            }
+
+            return other.BasePosition - BasePosition;
         }
     }
 }

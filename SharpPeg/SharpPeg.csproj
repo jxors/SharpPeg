@@ -4,10 +4,10 @@
     <TargetFrameworks>netstandard1.6;net452</TargetFrameworks>
     <OutputTypeEx>library</OutputTypeEx>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <FileVersion>1.1.0.0</FileVersion>
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
+    <FileVersion>1.2.0.0</FileVersion>
     <PackageProjectUrl>https://github.com/Jos635/sharppeg</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Jos635/sharppeg</RepositoryUrl>
     <PackageLicenseUrl>https://github.com/Jos635/SharpPeg/blob/master/LICENSE</PackageLicenseUrl>

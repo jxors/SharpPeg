@@ -151,7 +151,7 @@ namespace SharpPeg.Runner.ILRunner
                     for (var i = 0; i < captures.Count; i++)
                     {
                         var capture = captures[i];
-                        captureOutput.Add(new Capture(capture.CaptureKey, (int)(capture.StartIndex - dataPtr), (int)(capture.EndIndex - dataPtr), i));
+                        captureOutput.Add(new Capture(capture.CaptureKey, (int)(capture.StartIndex - dataPtr), (int)(capture.EndIndex - dataPtr), capture.OpenIndex, i));
                         if(captureOutput.Count >= 2 && captureOutput[captureOutput.Count - 2].CompareTo(captureOutput[captureOutput.Count - 1]) > 0)
                         {
                             needsSorting = true;

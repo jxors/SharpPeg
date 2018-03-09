@@ -75,7 +75,7 @@ namespace SharpPeg.Runner.Interpreter
                         success:
                         break;
                     case InstructionType.Capture:
-                        CaptureOutput.Add(new Capture(instr.Data2, variables[instr.Data1], pos, CaptureOutput.Count));
+                        CaptureOutput.Add(new Capture(instr.Data2, variables[instr.Data1], pos, offsets[instr.Data1], CaptureOutput.Count));
                         break;
                     case InstructionType.Jump:
                         pc = labelPositions[instr.Label];
