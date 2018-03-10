@@ -23,7 +23,7 @@ namespace SharpPeg.Optimizations.Default
                         if (context[context.GetLabelPosition(instruction.Label) + 1].Matches(InstructionType.Jump, out var newTarget))
                         {
                             context.NonDestructiveUpdate(i, instruction.WithLabel(newTarget));
-                        } else if (instruction.Matches(InstructionType.Jump, out var jumpTarget) && context[i + 1].Matches(InstructionType.MarkLabel, jumpTarget))
+                        } else if (i + 1 < context.Count && instruction.Matches(InstructionType.Jump, out var jumpTarget) && context[i + 1].Matches(InstructionType.MarkLabel, jumpTarget))
                         {
                             context.RemoveAt(i, true);
                         }
