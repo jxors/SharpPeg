@@ -66,7 +66,17 @@ namespace SharpPeg.Common
                         }
                     }
 
-                    ProcessOperator(currentElement.Data);
+                    if (currentElement is PrecompiledPattern pp)
+                    {
+                        foreach(var child in pp.Children)
+                        {
+                            ProcessOperator(child);
+                        }
+                    }
+                    else
+                    {
+                        ProcessOperator(currentElement.Data);
+                    }
                 }
             }
 

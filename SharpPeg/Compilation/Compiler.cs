@@ -46,22 +46,53 @@ namespace SharpPeg.Compilation
 
         private Method CompilePattern(Pattern p, Dictionary<Pattern, PatternInfo> patternInfo, Dictionary<Pattern, int> patternIndices)
         {
-            var context = new CompilerContext(patternInfo, patternIndices);
-            var failLabel = context.LabelAllocator++;
-            Compile(p.Data, failLabel, context);
-            context.Flush();
+            if (p is PrecompiledPattern pp)
+            {
+                var context = new CompilerContext(patternInfo, patternIndices);
+                foreach (var instruction in pp.Method.Instructions)
+                {
+                    if (instruction.Matches(InstructionType.Call))
+                    {
+                        if (!context.PatternIndices.TryGetValue(pp.PatternReferences[instruction.Data1], out var patternId))
+                        {
+                            throw new NotImplementedException();
+                        }
 
-            context.Add(Instruction.Return(1));
-            context.Add(Instruction.MarkLabel(failLabel));
-            context.Add(Instruction.Return(0));
+                        context.Add(Instruction.Call(instruction.Label, (ushort)patternId));
+                    }
+                    else
+                    {
+                        context.Add(instruction);
+                    }
+                }
 
-            return new Method(
-                p.Name,
-                context.ToList(),
-                context.CharacterRanges,
-                context.VariableAllocator,
-                context.LabelAllocator
-            );
+                return new Method(
+                    p.Name,
+                    context.ToList(),
+                    pp.Method.CharacterRanges,
+                    pp.Method.VariableCount,
+                    pp.Method.LabelCount
+                );
+            }
+            else
+            {
+                var context = new CompilerContext(patternInfo, patternIndices);
+                var failLabel = context.LabelAllocator++;
+                Compile(p.Data, failLabel, context);
+                context.Flush();
+
+                context.Add(Instruction.Return(1));
+                context.Add(Instruction.MarkLabel(failLabel));
+                context.Add(Instruction.Return(0));
+
+                return new Method(
+                    p.Name,
+                    context.ToList(),
+                    context.CharacterRanges,
+                    context.VariableAllocator,
+                    context.LabelAllocator
+                );
+            }
         }
 
         private void Compile(Operator op, ushort failLabel, CompilerContext context)
@@ -82,14 +113,14 @@ namespace SharpPeg.Compilation
                     break;
                 case Pattern p:
                     context.Flush();
-                    if (p.Data == null)
+                    if (p.Data == null && !(p is PrecompiledPattern))
                     {
                         throw new CompilationException($"Incomplete pattern definition {p.Name}.");
                     }
                     
                     // Inline if the pattern is small (less than 16 nodes) and does not call any other patterns, or if it only calls another pattern.
                     var patternInfo = context.PatternInfo[p];
-                    if (!(p.Data is Pattern) && (patternInfo.IsRecursive || patternInfo.NumNodes > 16 || patternInfo.PatternCalls.Count > 0))
+                    if (p is PrecompiledPattern || (!(p.Data is Pattern) && (patternInfo.IsRecursive || patternInfo.NumNodes > 16 || patternInfo.PatternCalls.Count > 0)))
                     {
                         if (!context.PatternIndices.TryGetValue(p, out var patternId))
                         {
@@ -168,7 +199,7 @@ namespace SharpPeg.Compilation
                     }
                     break;
                 default:
-                    throw new ArgumentException($"The argument {nameof(op)} is '{op}', which is not one of the recognised PEG types.");
+                    throw new ArgumentException($"The argument {nameof(op)} is '{op}' ({op.GetType()}), which is not one of the recognised PEG types.");
             }
         }
         

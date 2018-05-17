@@ -8,7 +8,7 @@ namespace SharpPeg.Operators
     public class Pattern : Operator
     {
         public virtual Operator Data { get; set; }
-        
+
         public string Name { get; }
 
         public override IEnumerable<Operator> Children => Enumerable.Empty<Operator>();
