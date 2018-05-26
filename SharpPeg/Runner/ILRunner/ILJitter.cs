@@ -35,6 +35,8 @@ namespace SharpPeg.Runner.ILRunner
 
         public bool EnableMemoization { get; set; } = false;
 
+        public bool EnableCaptureMemoization { get; set; } = false;
+
         private readonly FieldInfo capturesField = typeof(BaseJittedRunner).GetField("captures");
         private readonly ConstructorInfo captureConstructor = typeof(TemporaryCapture).GetConstructor(new[] { typeof(int), typeof(int), typeof(char*), typeof(char*) });
         private readonly MethodInfo captureListAddMethod = typeof(List<TemporaryCapture>).GetMethod("Add");
@@ -46,7 +48,10 @@ namespace SharpPeg.Runner.ILRunner
         private readonly FieldInfo exitPointsField = typeof(BaseJittedRunner).GetField("ExitPoints");
         private readonly FieldInfo methodsField = typeof(BaseJittedRunner).GetField("Methods");
         private readonly MethodInfo discardCapturesMethod = typeof(BaseJittedRunner).GetMethod("DiscardCaptures", BindingFlags.NonPublic | BindingFlags.Instance);
-        
+
+        private readonly MethodInfo restoreFullMemoize = typeof(BaseJittedRunner).GetMethod("ApplyMemoizedResult", BindingFlags.NonPublic | BindingFlags.Instance);
+        private readonly MethodInfo doFullMemoize = typeof(BaseJittedRunner).GetMethod("Memoize", BindingFlags.NonPublic | BindingFlags.Instance);
+
         public IRunner Compile(CompiledPeg peg)
         {
             var methods = peg.Methods;
@@ -111,6 +116,8 @@ namespace SharpPeg.Runner.ILRunner
                         generator.Emit(OpCodes.Ldarg_0);
                         generator.Emit(OpCodes.Ldarg_0);
                         generator.Emit(OpCodes.Ldfld, dataSizeField);
+                        generator.Emit(OpCodes.Ldc_I4_1);
+                        generator.Emit(OpCodes.Add);
                         generator.Emit(OpCodes.Newarr, typeof(char*));
                         generator.Emit(OpCodes.Stfld, field);
                     }
@@ -157,6 +164,7 @@ namespace SharpPeg.Runner.ILRunner
             var positionLocal = DeclareLocal(generator, typeof(char*), "position");
             var currentCharLocal = new Lazy<LocalBuilder>(() => DeclareLocal(generator, typeof(char), "currentChar"));
             var memoizationResult = new Lazy<LocalBuilder>(() => DeclareLocal(generator, typeof(char*), "memoizationResult"));
+            var startCaptureCount = new Lazy<LocalBuilder>(() => DeclareLocal(generator, typeof(int), "startCaptureCount"));
 
             var hasCheckedChain = new bool[method.Instructions.Count];
 
@@ -198,12 +206,35 @@ namespace SharpPeg.Runner.ILRunner
                 generator.Emit(OpCodes.Ceq);
                 generator.Emit(OpCodes.Brtrue, noMemoizationLabel);
 
+                if(EnableCaptureMemoization)
+                {
+                    generator.Emit(OpCodes.Ldarg_0);
+                    generator.Emit(OpCodes.Ldc_I4, (int)index);
+
+                    generator.Emit(OpCodes.Ldarg_1);
+                    generator.Emit(OpCodes.Ldarg_0);
+                    generator.Emit(OpCodes.Ldfld, dataPtrField);
+
+                    generator.Emit(OpCodes.Sub);
+                    generator.Emit(OpCodes.Ldc_I4_2);
+                    generator.Emit(OpCodes.Div);
+                    generator.EmitCall(OpCodes.Call, restoreFullMemoize, null);
+                }
+
                 generator.Emit(OpCodes.Ldloc, memoizationResult.Value);
                 generator.Emit(OpCodes.Ldc_I4_1);
                 generator.Emit(OpCodes.Sub);
                 generator.Emit(OpCodes.Ret);
 
                 generator.MarkLabel(noMemoizationLabel);
+
+                if(EnableCaptureMemoization)
+                {
+                    generator.Emit(OpCodes.Ldarg_0);
+                    generator.Emit(OpCodes.Ldfld, capturesField);
+                    generator.Emit(OpCodes.Callvirt, captureListCountMethod);
+                    generator.Emit(OpCodes.Stloc, startCaptureCount.Value);
+                }
             }
 
             const int CallFailed = 0;
@@ -385,6 +416,24 @@ namespace SharpPeg.Runner.ILRunner
                             generator.Emit(OpCodes.Ldc_I4_1);
                             generator.Emit(OpCodes.Add);
                             generator.Emit(OpCodes.Stelem, typeof(char*));
+
+                            if (EnableCaptureMemoization)
+                            {
+                                generator.Emit(OpCodes.Ldarg_0);
+                                generator.Emit(OpCodes.Ldc_I4, index);
+
+                                generator.Emit(OpCodes.Ldarg_1);
+
+                                generator.Emit(OpCodes.Ldarg_0);
+                                generator.Emit(OpCodes.Ldfld, dataPtrField);
+
+                                generator.Emit(OpCodes.Sub);
+                                generator.Emit(OpCodes.Ldc_I4_2);
+                                generator.Emit(OpCodes.Div);
+
+                                generator.Emit(OpCodes.Ldloc, startCaptureCount.Value);
+                                generator.EmitCall(OpCodes.Call, doFullMemoize, null);
+                            }
 
                             generator.Emit(OpCodes.Ldloc, memoizationResult.Value);
                         }

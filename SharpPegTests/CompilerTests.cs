@@ -1,6 +1,11 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpPeg;
+using SharpPeg.Compilation;
 using SharpPeg.Operators;
+using SharpPeg.Optimizations;
+using SharpPeg.Runner.ILRunner;
+using SharpPeg.Runner.Interpreter;
+using System.Linq;
 
 namespace SharpPegTests
 {
@@ -192,12 +197,27 @@ namespace SharpPegTests
             Assert.AreNotEqual(data.Length, result, $"{p} must not match '{data}'");
         }
 
-        private static int Match(Operator p, string data)
+        private PatternCompiler[] compilers = new PatternCompiler[]
         {
-            var runner = PatternCompiler.Default.Compile(new Pattern() { Data = p });
-            var result = runner.Run(data);
-            var matchSuccesful = result.IsSuccessful;
-            return matchSuccesful ? result.InputPosition : -1;
+            PatternCompiler.Default,
+            new PatternCompiler(new Compiler(), new DefaultOptimizer(), new ILJitter() { EnableMemoization = true, EnableCaptureMemoization = false }),
+            new PatternCompiler(new Compiler(), new DefaultOptimizer(), new ILJitter() { EnableMemoization = true, EnableCaptureMemoization = true }),
+            new PatternCompiler(new Compiler(), new DefaultOptimizer(), new InterpreterJitter()),
+        };
+
+        private int Match(Operator p, string data)
+        {
+            var results = compilers.Select(compiler => compiler.Compile(new Pattern() { Data = p }).Run(data)).ToList();
+            var first = results.First();
+
+            foreach (var result in results)
+            {
+                Assert.AreEqual(result.InputPosition, first.InputPosition);
+                Assert.AreEqual(result.IsSuccessful, first.IsSuccessful);
+            }
+
+            var matchSuccesful = first.IsSuccessful;
+            return matchSuccesful ? first.InputPosition : -1;
         }
     }
 }

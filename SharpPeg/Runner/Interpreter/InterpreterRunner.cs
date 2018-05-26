@@ -33,7 +33,8 @@ namespace SharpPeg.Runner.Interpreter
 
             var result = InternalRun(Methods[0], LabelPositions[0], index);
             CaptureOutput?.Sort();
-            return new RunResult(result != -1, result, 0);
+            var successful = result != -1;
+            return new RunResult(successful, successful ? result : 0, 0);
         }
 
         private int InternalRun(Method method, int[] labelPositions, int pos)
@@ -82,15 +83,18 @@ namespace SharpPeg.Runner.Interpreter
                         break;
                     case InstructionType.StorePosition:
                         variables[instr.Data1] = pos;
-                        offsets[instr.Data1] = CaptureOutput.Count;
+                        offsets[instr.Data1] = CaptureOutput?.Count ?? 0;
                         break;
                     case InstructionType.RestorePosition:
                         pos = variables[instr.Data1] + instr.Offset;
 
-                        var offset = offsets[instr.Data1];
-                        if (CaptureOutput.Count > offset)
+                        if (CaptureOutput != null)
                         {
-                            CaptureOutput.RemoveRange(offset, CaptureOutput.Count - offset);
+                            var offset = offsets[instr.Data1];
+                            if (CaptureOutput.Count > offset)
+                            {
+                                CaptureOutput.RemoveRange(offset, CaptureOutput.Count - offset);
+                            }
                         }
                         break;
                     case InstructionType.Call:

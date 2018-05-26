@@ -20,6 +20,28 @@ namespace SharpPeg.Runner.ILRunner
         public char*[] EntryPoints, ExitPoints;
         public List<Method> Methods;
 
+        public Dictionary<(int pattern, int position), (int baseIndex, List<TemporaryCapture> list)> memo;
+        protected void ApplyMemoizedResult(int patternId, int position)
+        {
+            var data = memo[(patternId, position)];
+            var openIndex = captures.Count;
+            foreach(var item in data.list)
+            {
+                captures.Add(new TemporaryCapture(item.CaptureKey, openIndex + (item.OpenIndex - data.baseIndex), item.StartIndex, item.EndIndex));
+            }
+        }
+
+        protected void Memoize(int patternId, int startPosition, int startCaptures)
+        {
+            if(memo == null)
+            {
+                memo = new Dictionary<(int pattern, int position), (int baseIndex, List<TemporaryCapture>)>();
+            }
+
+            var list = captures.Skip(startCaptures).ToList();
+            memo[(patternId, startPosition)] = (list.Count > 0 ? list.Min(item => item.OpenIndex) : 0, list);
+        }
+
         private class StackTraceReconstruction : IComparable<StackTraceReconstruction>
         {
             public Method Method { get; }
