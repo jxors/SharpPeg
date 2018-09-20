@@ -38,15 +38,15 @@ namespace SharpPeg.Operators
 
         public IEnumerable<Operator> GetDescendants()
         {
-            var queue = new Queue<Operator>(Children);
-            while(queue.Count > 0)
+            var stack = new Stack<Operator>(Children);
+            while(stack.Count > 0)
             {
-                var current = queue.Dequeue();
+                var current = stack.Pop();
                 yield return current;
 
-                foreach (var child in current.Children)
+                foreach (var child in current.Children.Reverse())
                 {
-                    queue.Enqueue(child);
+                    stack.Push(child);
                 }
             }
         }
