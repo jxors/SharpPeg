@@ -38,7 +38,7 @@ namespace SharpPeg.Operators
 
         public IEnumerable<Operator> GetDescendants()
         {
-            var stack = new Stack<Operator>(Children);
+            var stack = new Stack<Operator>(Children.Reverse());
             while(stack.Count > 0)
             {
                 var current = stack.Pop();
