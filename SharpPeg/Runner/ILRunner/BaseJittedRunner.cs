@@ -38,8 +38,19 @@ namespace SharpPeg.Runner.ILRunner
                 memo = new Dictionary<(int pattern, int position), (int baseIndex, List<TemporaryCapture>)>();
             }
 
-            var list = captures.Skip(startCaptures).ToList();
-            memo[(patternId, startPosition)] = (list.Count > 0 ? list.Min(item => item.OpenIndex) : 0, list);
+            var newList = new List<TemporaryCapture>(captures.Count - startCaptures);
+            var minOpenIndex = int.MaxValue;
+            for(var i = startCaptures; i < captures.Count; i++)
+            {
+                var capture = captures[i];
+                newList.Add(capture);
+                if(captures[i].OpenIndex < minOpenIndex)
+                {
+                    minOpenIndex = captures[i].OpenIndex;
+                }
+            }
+
+            memo[(patternId, startPosition)] = (newList.Count > 0 ? minOpenIndex : 0, newList);
         }
 
         private class StackTraceReconstruction : IComparable<StackTraceReconstruction>
