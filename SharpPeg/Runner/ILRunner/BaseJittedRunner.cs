@@ -83,6 +83,36 @@ namespace SharpPeg.Runner.ILRunner
             }
         }
 
+        public IEnumerable<string> GetPatternsTriedAt(int index)
+        {
+            var list = new List<string>();
+            var pos = dataPtr + index;
+            for (var i = 0; i < EntryPoints.Length; i++)
+            {
+                if (EntryPoints[i] == pos)
+                {
+                    list.Add(Methods[i].Name);
+                }
+            }
+
+            return list;
+        }
+
+        public IEnumerable<string> GetPatternsFinishedAt(int index)
+        {
+            var list = new List<string>();
+            var pos = dataPtr + index;
+            for (var i = 0; i < EntryPoints.Length; i++)
+            {
+                if (ExitPoints[i] == pos)
+                {
+                    list.Add(Methods[i].Name);
+                }
+            }
+
+            return list;
+        }
+
         public string ExplainResult(RunResult result, string inputData)
         {
             if(result.IsSuccessful)

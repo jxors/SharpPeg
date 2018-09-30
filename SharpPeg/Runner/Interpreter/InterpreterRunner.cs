@@ -23,6 +23,16 @@ namespace SharpPeg.Runner.Interpreter
 
         public string ExplainResult(RunResult result, string inputData) => throw new NotImplementedException();
 
+        public IEnumerable<string> GetPatternsFinishedAt(int index)
+        {
+            throw new InvalidOperationException("Only available for the IL runner");
+        }
+
+        public IEnumerable<string> GetPatternsTriedAt(int startIndex)
+        {
+            throw new InvalidOperationException("Only available for the IL runner");
+        }
+
         public RunResult Run(string stringData, List<Capture> captureOutput = null) => Run(stringData.ToCharArray(), 0, stringData.Length, captureOutput);
 
         public RunResult Run(char[] data, int index, int length, List<Capture> captureOutput = null)

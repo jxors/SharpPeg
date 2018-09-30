@@ -25,6 +25,16 @@ namespace SharpPegTests
 
             public string ExplainResult(RunResult result, string inputData) => "";
 
+            public IEnumerable<string> GetPatternsFinishedAt(int index)
+            {
+                throw new NotImplementedException();
+            }
+
+            public IEnumerable<string> GetPatternsTriedAt(int startIndex)
+            {
+                throw new NotImplementedException();
+            }
+
             public RunResult Run(string stringData, List<Capture> captureOutput = null) => default(RunResult);
 
             public RunResult Run(char[] data, int index, int length, List<Capture> captureOutput = null) => default(RunResult);

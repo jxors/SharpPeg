@@ -4,7 +4,7 @@
     <TargetFrameworks>netstandard1.6;net452</TargetFrameworks>
     <OutputTypeEx>library</OutputTypeEx>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.4.3</Version>
+    <Version>1.4.4</Version>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <AssemblyVersion>1.4.3.0</AssemblyVersion>
     <FileVersion>1.4.3.0</FileVersion>
