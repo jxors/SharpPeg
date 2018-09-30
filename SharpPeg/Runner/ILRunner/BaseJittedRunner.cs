@@ -95,7 +95,9 @@ namespace SharpPeg.Runner.ILRunner
                 }
             }
 
-            return list;
+            return memo.Keys
+                .Where(k => k.position == index)
+                .Select(k => Methods[k.pattern].Name);
         }
 
         public IEnumerable<string> GetPatternsFinishedAt(int index)

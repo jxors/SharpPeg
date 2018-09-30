@@ -11,6 +11,8 @@ namespace SharpPeg.Compilation
 {
     public class Compiler : ICompiler
     {
+        public bool InlinePatterns { get; set; } = true;
+
         public Compiler()
         { }
         
@@ -120,7 +122,9 @@ namespace SharpPeg.Compilation
                     
                     // Inline if the pattern is small (less than 16 nodes) and does not call any other patterns, or if it only calls another pattern.
                     var patternInfo = context.PatternInfo[p];
-                    if (p is PrecompiledPattern || (!(p.Data is Pattern) && (patternInfo.IsRecursive || patternInfo.NumNodes > 16 || patternInfo.PatternCalls.Count > 0)))
+                    if (p is PrecompiledPattern 
+                        || !InlinePatterns
+                        || (!(p.Data is Pattern) && (patternInfo.IsRecursive || patternInfo.NumNodes > 16 || patternInfo.PatternCalls.Count > 0)))
                     {
                         if (!context.PatternIndices.TryGetValue(p, out var patternId))
                         {
