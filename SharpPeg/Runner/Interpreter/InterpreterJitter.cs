@@ -15,6 +15,12 @@ namespace SharpPeg.Runner.Interpreter
             return new InterpreterRunner(compiledPeg.StartPatternIndex, compiledPeg.Methods, labelPositions);
         }
 
+        public IRunnerFactory CompileAsFactory(CompiledPeg compiledPeg)
+        {
+            var labelPositions = compiledPeg.Methods.Select(item => CalculateLabelPositions(item)).ToArray();
+            return new InterpreterFactory(compiledPeg.StartPatternIndex, compiledPeg.Methods, labelPositions);
+        }
+
         private int[] CalculateLabelPositions(Method item)
         {
             var instructions = item.Instructions;

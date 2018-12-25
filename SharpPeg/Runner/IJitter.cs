@@ -7,5 +7,7 @@ namespace SharpPeg.Runner
     public interface IJitter
     {
         IRunner Compile(CompiledPeg compiledPeg);
+
+        IRunnerFactory CompileAsFactory(CompiledPeg peg);
     }
 }

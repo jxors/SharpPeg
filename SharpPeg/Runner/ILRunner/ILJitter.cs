@@ -54,6 +54,16 @@ namespace SharpPeg.Runner.ILRunner
 
         public IRunner Compile(CompiledPeg peg)
         {
+            return (IRunner)Activator.CreateInstance(CompileInternal(peg), new object[] { peg.Methods });
+        }
+
+        public IRunnerFactory CompileAsFactory(CompiledPeg peg)
+        {
+            return new ILRunnerFactory(CompileInternal(peg), peg.Methods);
+        }
+
+        private Type CompileInternal(CompiledPeg peg)
+        {
             var methods = peg.Methods;
             var moduleBuilder = CreateModuleBuilder();
             var typeBuilder = moduleBuilder.DefineType("InternalType", TypeAttributes.Public | TypeAttributes.Class, typeof(BaseJittedRunner));
@@ -72,10 +82,8 @@ namespace SharpPeg.Runner.ILRunner
             {
                 CompileSinglePattern(i, methods, methodBuilders, memoizationFields);
             }
-            
-            var m_Type = typeBuilder.CreateTypeInfo();
 
-            return (IRunner)Activator.CreateInstance(m_Type.UnderlyingSystemType, new object[] { methods });
+            return typeBuilder.CreateTypeInfo().UnderlyingSystemType;
         }
 
         private void BuildConstructor(ConstructorBuilder constructorBuilder)

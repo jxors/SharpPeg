@@ -33,5 +33,14 @@ namespace SharpPeg
 
             return runner;
         }
+
+        internal IRunnerFactory CompileAsFactory(Pattern pattern)
+        {
+            var compiledPeg = Compiler.Compile(pattern);
+            var optimizedPeg = Optimizer?.Optimize(compiledPeg) ?? compiledPeg;
+            var runner = Jitter.CompileAsFactory(optimizedPeg);
+
+            return runner;
+        }
     }
 }

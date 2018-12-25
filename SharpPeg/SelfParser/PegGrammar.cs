@@ -9,8 +9,8 @@ namespace SharpPeg.SelfParser
     public class PegGrammar
     {
         private readonly PatternCompiler patternCompiler;
-        private IRunner grammarRunner;
-        private IRunner expressionRunner;
+        private IRunnerFactory grammarRunner;
+        private IRunnerFactory expressionRunner;
 
         protected Pattern OPEN;
         protected Pattern CLOSE;
@@ -249,11 +249,11 @@ namespace SharpPeg.SelfParser
             }
         }
 
-        private void EnsureBuilt(Pattern pattern, ref IRunner runner)
+        private void EnsureBuilt(Pattern pattern, ref IRunnerFactory runner)
         {
             if (runner == null)
             {
-                runner = patternCompiler.Compile(pattern);
+                runner = patternCompiler.CompileAsFactory(pattern);
             }
         }
 
@@ -273,14 +273,14 @@ namespace SharpPeg.SelfParser
         {
             EnsureGrammarBuilt();
 
-            return Parse(grammarRunner, data).Cast<Pattern>();
+            return Parse(grammarRunner.New(), data).Cast<Pattern>();
         }
 
         public Operator ParseExpression(string data)
         {
             EnsureExpressionBuilt();
 
-            var result = Parse(expressionRunner, data);
+            var result = Parse(expressionRunner.New(), data);
             if(result.Count != 1)
             {
                 throw new PegParsingException("Parsed more than one expression");
