@@ -4,7 +4,7 @@
     <TargetFrameworks>netstandard1.6;net452</TargetFrameworks>
     <OutputTypeEx>library</OutputTypeEx>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.5.0</Version>
+    <Version>1.5.1</Version>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PackageProjectUrl>https://github.com/Jos635/sharppeg</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Jos635/sharppeg</RepositoryUrl>

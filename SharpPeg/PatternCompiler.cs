@@ -34,7 +34,7 @@ namespace SharpPeg
             return runner;
         }
 
-        internal IRunnerFactory CompileAsFactory(Pattern pattern)
+        public IRunnerFactory CompileAsFactory(Pattern pattern)
         {
             var compiledPeg = Compiler.Compile(pattern);
             var optimizedPeg = Optimizer?.Optimize(compiledPeg) ?? compiledPeg;
