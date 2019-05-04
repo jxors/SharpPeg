@@ -43,7 +43,6 @@ namespace SharpPeg.Optimizations
         {
             var cleanup = new OptimizationBase[] {
                 new QuickCleanupOptimization(),
-                new FastJumpCleanupOptimization(),
             };
 
             var context = new OptimizationContext(m);
@@ -87,7 +86,7 @@ namespace SharpPeg.Optimizations
                 c.Optimize(context);
             }
 
-            return new Method(m.Name, context.Instructions, m.CharacterRanges, context.VariableAllocator, context.LabelAllocator);
+            return new Method(m.Name, context.Instructions, m.CharacterRanges, context.FailureLabelMap, context.VariableAllocator, context.LabelAllocator);
         }
 
         private static bool Optimize(OptimizationContext context, OptimizationBase[] items)

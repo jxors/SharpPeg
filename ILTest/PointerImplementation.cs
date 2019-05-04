@@ -4,7 +4,7 @@ namespace ILBenchmark
 {
     public class PointerImplementation : BaseJittedRunner
     {
-        protected unsafe override char* RunInternal(char* ptr)
+        protected unsafe override UnsafePatternResult RunInternal(char* ptr)
         {
             char* position = ptr;
             while (true)
@@ -28,7 +28,7 @@ namespace ILBenchmark
                     position++;
                 }
             }
-            return position;
+            return new UnsafePatternResult(0, position);
         }
     }
 }

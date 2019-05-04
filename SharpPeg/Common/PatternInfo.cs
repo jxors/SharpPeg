@@ -10,7 +10,6 @@ namespace SharpPeg.Common
     {
         public bool IsRecursive { get; private set; } = false;
         public bool ContainsCaptures { get; private set; } = false;
-
         public int NumNodes { get; private set; } = 0;
 
         public List<Pattern> PatternCalls { get; private set; } = new List<Pattern>();

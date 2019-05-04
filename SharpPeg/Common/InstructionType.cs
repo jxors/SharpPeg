@@ -26,7 +26,7 @@ namespace SharpPeg.Common
         Jump = 2,
 
         /// <summary>
-        /// Call LFail _ P _
+        /// Call _ _ P FailMap
         /// </summary>
         Call = 3,
 

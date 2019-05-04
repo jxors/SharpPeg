@@ -15,6 +15,7 @@ namespace SharpPeg.Optimizations.Default
             var j = i;
             var patchedLabels = new Dictionary<(ushort label, short offset), ushort>();
             var offset = matchedInstruction.Offset;
+            var removedAt = 0;
             context.RemoveAt(j);
 
             while (!IsChainBreaker(context[j], Instruction.Advance(offset), null))
@@ -23,13 +24,12 @@ namespace SharpPeg.Optimizations.Default
                 switch (instruction.Type)
                 {
                     case InstructionType.Advance:
-                        changed = true;
                         offset += instruction.Offset;
+                        removedAt = j;
                         context.RemoveAt(j);
                         break;
                     case InstructionType.BoundsCheck:
                     case InstructionType.Char:
-                    case InstructionType.Call:
                         var targetLabel = instruction.Label;
                         if (context[context.GetLabelPosition(targetLabel) + 1].Type != InstructionType.RestorePosition)
                         {
@@ -56,6 +56,7 @@ namespace SharpPeg.Optimizations.Default
             if (offset != 0)
             {
                 context.Insert(j, Instruction.Advance(offset));
+                changed |= removedAt != i;
             }
 
             return changed || j != i;

@@ -57,10 +57,18 @@ namespace SharpPeg.Optimizations.Default.Analyzers
                                     case InstructionType.BoundsCheck:
                                     case InstructionType.Char:
                                     case InstructionType.Jump:
-                                    case InstructionType.Call:
                                         if (context[i].Label == instruction.Label)
                                         {
                                             positionStack.Push(i);
+                                        }
+                                        break;
+                                    case InstructionType.Call:
+                                        foreach (var (_, jumpTarget) in context.FailureLabelMap[context[i].Data2].Mapping)
+                                        {
+                                            if (jumpTarget == instruction.Label)
+                                            {
+                                                positionStack.Push(i);
+                                            }
                                         }
                                         break;
                                 }
@@ -129,10 +137,18 @@ namespace SharpPeg.Optimizations.Default.Analyzers
                                     case InstructionType.BoundsCheck:
                                     case InstructionType.Char:
                                     case InstructionType.Jump:
-                                    case InstructionType.Call:
                                         if (context[i].Label == instruction.Label)
                                         {
                                             positionStack.Push(i);
+                                        }
+                                        break;
+                                    case InstructionType.Call:
+                                        foreach(var (_, jumpTarget) in context.FailureLabelMap[context[i].Data2].Mapping)
+                                        {
+                                            if (jumpTarget == instruction.Label)
+                                            {
+                                                positionStack.Push(i);
+                                            }
                                         }
                                         break;
                                 }

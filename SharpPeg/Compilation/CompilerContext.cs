@@ -4,6 +4,7 @@ using System.Linq;
 using System.Collections;
 using SharpPeg.Common;
 using SharpPeg.Optimizations.Default.Analyzers;
+using System;
 
 namespace SharpPeg.Compilation
 {
@@ -27,6 +28,7 @@ namespace SharpPeg.Compilation
         private ushort boundsCheckFailLabel = 0;
         public IReadOnlyDictionary<Pattern, PatternInfo> PatternInfo { get; }
         public IReadOnlyDictionary<Pattern, int> PatternIndices { get;}
+        public List<LabelMap> FailureLabelMap { get; } = new List<LabelMap>();
 
         public CompilerContext(Dictionary<Pattern, PatternInfo> patternInfo, Dictionary<Pattern, int> patternIndices)
         {
@@ -119,6 +121,14 @@ namespace SharpPeg.Compilation
         IEnumerator IEnumerable.GetEnumerator()
         {
             return ((IEnumerable<Instruction>)instructions).GetEnumerator();
+        }
+
+        public ushort GetFailLabelMap(Dictionary<int, ushort> failLabelMap)
+        {
+            var result = FailureLabelMap.Count;
+            FailureLabelMap.Add(new LabelMap(failLabelMap.Select(kvp => (kvp.Key, kvp.Value))));
+
+            return (ushort)result;
         }
     }
 }

@@ -199,6 +199,12 @@ namespace SharpPegTests
 
         private PatternCompiler[] compilers = new PatternCompiler[]
         {
+            // First compiler is the one we're comparing to, so it's best to use the one with the least optimizations & complex CIL codegen involved
+            new PatternCompiler(new Compiler(), new DefaultOptimizer
+            {
+                Optimizations = new SharpPeg.Optimizations.Default.OptimizationBase[0],
+                RareOptimizations = new SharpPeg.Optimizations.Default.OptimizationBase[0],
+            }, new InterpreterJitter()),
             PatternCompiler.Default,
             new PatternCompiler(new Compiler(), new DefaultOptimizer(), new ILJitter() { EnableMemoization = true, EnableCaptureMemoization = false }),
             new PatternCompiler(new Compiler(), new DefaultOptimizer(), new ILJitter() { EnableMemoization = true, EnableCaptureMemoization = true }),
@@ -212,8 +218,8 @@ namespace SharpPegTests
 
             foreach (var result in results)
             {
-                Assert.AreEqual(result.InputPosition, first.InputPosition);
-                Assert.AreEqual(result.IsSuccessful, first.IsSuccessful);
+                Assert.AreEqual(first.InputPosition, result.InputPosition);
+                Assert.AreEqual(first.IsSuccessful, result.IsSuccessful);
             }
 
             var matchSuccesful = first.IsSuccessful;

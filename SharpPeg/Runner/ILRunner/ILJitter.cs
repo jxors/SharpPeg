@@ -38,7 +38,10 @@ namespace SharpPeg.Runner.ILRunner
         public bool EnableCaptureMemoization { get; set; } = false;
 
         private readonly FieldInfo capturesField = typeof(BaseJittedRunner).GetField("captures");
+        private readonly FieldInfo resultLabelField = typeof(UnsafePatternResult).GetField("Label");
+        private readonly FieldInfo resultPositionField = typeof(UnsafePatternResult).GetField("Position");
         private readonly ConstructorInfo captureConstructor = typeof(TemporaryCapture).GetConstructor(new[] { typeof(int), typeof(int), typeof(char*), typeof(char*) });
+        private readonly ConstructorInfo resultConstructor = typeof(UnsafePatternResult).GetConstructor(new[] { typeof(int), typeof(char*) });
         private readonly MethodInfo captureListAddMethod = typeof(List<TemporaryCapture>).GetMethod("Add");
         private readonly MethodInfo captureListCountMethod = typeof(List<TemporaryCapture>).GetMethod("get_Count");
         private readonly FieldInfo dataPtrField = typeof(BaseJittedRunner).GetField("dataPtr");
@@ -69,11 +72,11 @@ namespace SharpPeg.Runner.ILRunner
             var typeBuilder = moduleBuilder.DefineType("InternalType", TypeAttributes.Public | TypeAttributes.Class, typeof(BaseJittedRunner));
 
             var hookAttributes = MethodAttributes.Public | MethodAttributes.ReuseSlot | MethodAttributes.Virtual | MethodAttributes.HideBySig;
-            var hook = typeBuilder.DefineMethod("RunInternal", hookAttributes, typeof(char*), new[] { typeof(char*) });
+            var hook = typeBuilder.DefineMethod("RunInternal", hookAttributes, typeof(UnsafePatternResult), new[] { typeof(char*) });
             var methodBuilders = methods
-                .Select((method, i) => typeBuilder.DefineMethod($"Pattern_{method}_{i}", MethodAttributes.Private | MethodAttributes.HideBySig, typeof(char*), new[] { typeof(char*) }))
+                .Select((method, i) => typeBuilder.DefineMethod($"Pattern_{method}_{i}", MethodAttributes.Private | MethodAttributes.HideBySig, typeof(UnsafePatternResult), new[] { typeof(char*) }))
                 .ToArray();
-            var memoizationFields = EnableMemoization ? methods.Select((method, i) => typeBuilder.DefineField($"memoization_{method}_{i}", typeof(char*[]), FieldAttributes.Private)).ToArray() : null;
+            var memoizationFields = EnableMemoization ? methods.Select((method, i) => typeBuilder.DefineField($"memoization_{method}_{i}", typeof(UnsafePatternResult[]), FieldAttributes.Private)).ToArray() : null;
 
             BuildHook(hook, peg, methodBuilders, memoizationFields);
             BuildConstructor(typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, new Type[] { typeof(List<Method>) }));
@@ -126,7 +129,7 @@ namespace SharpPeg.Runner.ILRunner
                         generator.Emit(OpCodes.Ldfld, dataSizeField);
                         generator.Emit(OpCodes.Ldc_I4_1);
                         generator.Emit(OpCodes.Add);
-                        generator.Emit(OpCodes.Newarr, typeof(char*));
+                        generator.Emit(OpCodes.Newarr, typeof(UnsafePatternResult));
                         generator.Emit(OpCodes.Stfld, field);
                     }
                 }
@@ -170,9 +173,11 @@ namespace SharpPeg.Runner.ILRunner
             var labels = Enumerable.Range(0, method.LabelCount).Select(item => generator.DefineLabel()).ToArray();
             
             var positionLocal = DeclareLocal(generator, typeof(char*), "position");
+            var resultLocal = DeclareLocal(generator, typeof(UnsafePatternResult), "result");
             var currentCharLocal = new Lazy<LocalBuilder>(() => DeclareLocal(generator, typeof(char), "currentChar"));
-            var memoizationResult = new Lazy<LocalBuilder>(() => DeclareLocal(generator, typeof(char*), "memoizationResult"));
+            var memoizationResult = new Lazy<LocalBuilder>(() => DeclareLocal(generator, typeof(UnsafePatternResult), "memoizationResult"));
             var startCaptureCount = new Lazy<LocalBuilder>(() => DeclareLocal(generator, typeof(int), "startCaptureCount"));
+            var memoizeReturnValueLabel = new Lazy<Label>(() => generator.DefineLabel());
 
             var hasCheckedChain = new bool[method.Instructions.Count];
 
@@ -192,7 +197,6 @@ namespace SharpPeg.Runner.ILRunner
             if(EnableMemoization)
             {
                 var noMemoizationLabel = generator.DefineLabel();
-                
                 generator.Emit(OpCodes.Ldarg_0);
                 generator.Emit(OpCodes.Ldfld, memoizationFields[index]);
                 
@@ -207,9 +211,12 @@ namespace SharpPeg.Runner.ILRunner
                 generator.Emit(OpCodes.Div);
 
                 // Load memoization result
-                generator.Emit(OpCodes.Ldelem, typeof(char*));
+                generator.Emit(OpCodes.Ldelem, typeof(UnsafePatternResult));
                 generator.Emit(OpCodes.Stloc, memoizationResult.Value);
                 generator.Emit(OpCodes.Ldloc, memoizationResult.Value);
+
+                // Check if result.Position == null (i.e. we don't have a memoized result yet)
+                generator.Emit(OpCodes.Ldfld, resultPositionField);
                 generator.Emit(OpCodes.Ldc_I4_0);
                 generator.Emit(OpCodes.Ceq);
                 generator.Emit(OpCodes.Brtrue, noMemoizationLabel);
@@ -230,8 +237,6 @@ namespace SharpPeg.Runner.ILRunner
                 }
 
                 generator.Emit(OpCodes.Ldloc, memoizationResult.Value);
-                generator.Emit(OpCodes.Ldc_I4_1);
-                generator.Emit(OpCodes.Sub);
                 generator.Emit(OpCodes.Ret);
 
                 generator.MarkLabel(noMemoizationLabel);
@@ -328,11 +333,42 @@ namespace SharpPeg.Runner.ILRunner
                         generator.Emit(OpCodes.Ldloc, positionLocal);
                         generator.EmitCall(OpCodes.Call, methodBuilders[instruction.Data1], null);
 
-                        generator.Emit(OpCodes.Stloc, positionLocal);
-                        generator.Emit(OpCodes.Ldloc, positionLocal);
+                        var successLabel = generator.DefineLabel();
 
-                        EmitPushInt(generator, CallFailed);
-                        generator.Emit(OpCodes.Beq, labels[instruction.Label]);
+                        // TODO: Use PatternResult to determine where we're going to jump
+                        generator.Emit(OpCodes.Stloc, resultLocal);
+                        generator.Emit(OpCodes.Ldloc, resultLocal);
+                        generator.Emit(OpCodes.Ldfld, resultLabelField);
+
+                        EmitPushInt(generator, 0);
+                        generator.Emit(OpCodes.Beq, successLabel);
+
+                        // Special failure case: jump to labels
+                        foreach(var (failureLabel, jumpTarget) in method.FailureLabelMap[instruction.Data2].Mapping)
+                        {
+                            generator.Emit(OpCodes.Ldloc, resultLocal);
+                            generator.Emit(OpCodes.Ldfld, resultLabelField);
+                            EmitPushInt(generator, failureLabel);
+                            generator.Emit(OpCodes.Beq, labels[jumpTarget]);
+                        }
+
+                        // General failure case: return failure
+                        if (EnableMemoization)
+                        {
+                            generator.Emit(OpCodes.Br, memoizeReturnValueLabel.Value);
+                        }
+                        else
+                        {
+                            generator.Emit(OpCodes.Ldloc, resultLocal);
+                            generator.Emit(OpCodes.Ret);
+                        }
+
+                        // Success case: use new position returned by pattern
+                        generator.MarkLabel(successLabel);
+                        generator.Emit(OpCodes.Ldloc, resultLocal);
+                        generator.Emit(OpCodes.Ldfld, resultPositionField);
+                        generator.Emit(OpCodes.Stloc, positionLocal);
+
                         break;
                     case InstructionType.Capture:
                         generator.Emit(OpCodes.Ldarg_0);
@@ -385,11 +421,6 @@ namespace SharpPeg.Runner.ILRunner
                     case InstructionType.Return:
                         if (instruction.Data1 == 0)
                         {
-                            // Return fail
-                            generator.Emit(OpCodes.Ldc_I4_0);
-                        }
-                        else
-                        {
                             if (EmitErrorInfo)
                             {
                                 generator.Emit(OpCodes.Ldarg_0);
@@ -400,53 +431,35 @@ namespace SharpPeg.Runner.ILRunner
                             }
 
                             // Return success
+                            generator.Emit(OpCodes.Ldloca, resultLocal);
+                            generator.Emit(OpCodes.Ldc_I4_0);
+                            generator.Emit(OpCodes.Stfld, resultLabelField);
+
+                            generator.Emit(OpCodes.Ldloca, resultLocal);
                             generator.Emit(OpCodes.Ldloc, positionLocal);
+                            generator.Emit(OpCodes.Stfld, resultPositionField);
                         }
-
-                        if(EnableMemoization)
+                        else
                         {
-                            generator.Emit(OpCodes.Stloc, memoizationResult.Value);
-                            generator.Emit(OpCodes.Ldarg_0);
-                            generator.Emit(OpCodes.Ldfld, memoizationFields[index]);
+                            // Return failure
+                            generator.Emit(OpCodes.Ldloca, resultLocal);
+                            EmitPushInt(generator, instruction.Data1);
+                            generator.Emit(OpCodes.Stfld, resultLabelField);
 
-                            // Calculate position
-                            generator.Emit(OpCodes.Ldarg_1);
-
-                            generator.Emit(OpCodes.Ldarg_0);
-                            generator.Emit(OpCodes.Ldfld, dataPtrField);
-
-                            generator.Emit(OpCodes.Sub);
-                            generator.Emit(OpCodes.Ldc_I4_2);
-                            generator.Emit(OpCodes.Div);
-
-                            // Store
-                            generator.Emit(OpCodes.Ldloc, memoizationResult.Value);
-                            generator.Emit(OpCodes.Ldc_I4_1);
-                            generator.Emit(OpCodes.Add);
-                            generator.Emit(OpCodes.Stelem, typeof(char*));
-
-                            if (EnableCaptureMemoization)
-                            {
-                                generator.Emit(OpCodes.Ldarg_0);
-                                generator.Emit(OpCodes.Ldc_I4, index);
-
-                                generator.Emit(OpCodes.Ldarg_1);
-
-                                generator.Emit(OpCodes.Ldarg_0);
-                                generator.Emit(OpCodes.Ldfld, dataPtrField);
-
-                                generator.Emit(OpCodes.Sub);
-                                generator.Emit(OpCodes.Ldc_I4_2);
-                                generator.Emit(OpCodes.Div);
-
-                                generator.Emit(OpCodes.Ldloc, startCaptureCount.Value);
-                                generator.EmitCall(OpCodes.Call, doFullMemoize, null);
-                            }
-
-                            generator.Emit(OpCodes.Ldloc, memoizationResult.Value);
+                            generator.Emit(OpCodes.Ldloca, resultLocal);
+                            generator.Emit(OpCodes.Ldloc, positionLocal);
+                            generator.Emit(OpCodes.Stfld, resultPositionField);
                         }
 
-                        generator.Emit(OpCodes.Ret);
+                        if (EnableMemoization)
+                        {
+                            generator.Emit(OpCodes.Br, memoizeReturnValueLabel.Value);
+                        }
+                        else
+                        {
+                            generator.Emit(OpCodes.Ldloc, resultLocal);
+                            generator.Emit(OpCodes.Ret);
+                        }
                         break;
                     case InstructionType.MarkLabel:
                         generator.MarkLabel(labels[instruction.Label]);
@@ -454,6 +467,50 @@ namespace SharpPeg.Runner.ILRunner
                     default:
                         throw new ArgumentException($"Unrecognised instruction type: {instruction.Type}");
                 }
+            }
+
+            if(EnableMemoization)
+            {
+                generator.MarkLabel(memoizeReturnValueLabel.Value);
+                generator.Emit(OpCodes.Ldloc, resultLocal);
+                generator.Emit(OpCodes.Stloc, memoizationResult.Value);
+                generator.Emit(OpCodes.Ldarg_0);
+                generator.Emit(OpCodes.Ldfld, memoizationFields[index]);
+
+                // Calculate position
+                generator.Emit(OpCodes.Ldarg_1);
+
+                generator.Emit(OpCodes.Ldarg_0);
+                generator.Emit(OpCodes.Ldfld, dataPtrField);
+
+                generator.Emit(OpCodes.Sub);
+                generator.Emit(OpCodes.Ldc_I4_2);
+                generator.Emit(OpCodes.Div);
+
+                // Store
+                generator.Emit(OpCodes.Ldloc, memoizationResult.Value);
+                generator.Emit(OpCodes.Stelem, typeof(UnsafePatternResult));
+
+                if (EnableCaptureMemoization)
+                {
+                    generator.Emit(OpCodes.Ldarg_0);
+                    generator.Emit(OpCodes.Ldc_I4, index);
+
+                    generator.Emit(OpCodes.Ldarg_1);
+
+                    generator.Emit(OpCodes.Ldarg_0);
+                    generator.Emit(OpCodes.Ldfld, dataPtrField);
+
+                    generator.Emit(OpCodes.Sub);
+                    generator.Emit(OpCodes.Ldc_I4_2);
+                    generator.Emit(OpCodes.Div);
+
+                    generator.Emit(OpCodes.Ldloc, startCaptureCount.Value);
+                    generator.EmitCall(OpCodes.Call, doFullMemoize, null);
+                }
+
+                generator.Emit(OpCodes.Ldloc, resultLocal);
+                generator.Emit(OpCodes.Ret);
             }
             
             generator.EndScope();

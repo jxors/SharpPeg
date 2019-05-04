@@ -29,7 +29,7 @@ namespace SharpPeg.Common
         public static Instruction BoundsCheck(ushort failLabel, short offset) =>                new Instruction(InstructionType.BoundsCheck, failLabel, offset, 0, 0);
         public static Instruction Char(ushort failLabel, short offset, ushort index, ushort length) =>   new Instruction(InstructionType.Char, failLabel, offset, index, length);
         public static Instruction Advance(short offset) =>                                      new Instruction(InstructionType.Advance, 0, offset, 0, 0);
-        public static Instruction Call(ushort failLabel, ushort patternIndex) =>                new Instruction(InstructionType.Call, failLabel, 0, patternIndex, 0);
+        public static Instruction Call(ushort failLabelMap, ushort patternIndex) =>             new Instruction(InstructionType.Call, 0, 0, patternIndex, failLabelMap);
         public static Instruction Jump(ushort label) =>                                         new Instruction(InstructionType.Jump, label, 0, 0, 0);
         public static Instruction MarkLabel(ushort label) =>                                    new Instruction(InstructionType.MarkLabel, label, 0, 0, 0);
         public static Instruction StorePosition(ushort variable) =>                             new Instruction(InstructionType.StorePosition, 0, 0, variable, 0);
@@ -41,7 +41,7 @@ namespace SharpPeg.Common
 
         public bool IsCharOrBoundsCheck => Type <= InstructionType.Char;
 
-        public bool CanJumpToLabel => Type <= InstructionType.Call;
+        public bool CanJumpToLabel => Type <= InstructionType.Jump; // Call also jumps, but has a mapping instead of a single target
         
         public bool IsEnding
         {
@@ -69,7 +69,7 @@ namespace SharpPeg.Common
                 case InstructionType.Advance:
                     return $"  {InstructionType.Advance} +{Offset}";
                 case InstructionType.Call:
-                    return $"  {InstructionType.Call} L{Label} P{Data1}";
+                    return $"  {InstructionType.Call} P{Data1} M[{Data2}]";
                 case InstructionType.Return:
                     return $"  {InstructionType.Return} {Data1}";
                 case InstructionType.Jump:

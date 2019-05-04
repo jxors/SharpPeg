@@ -4,6 +4,7 @@ using SharpPeg.Optimizations.Default.Analyzers;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace SharpPeg.Optimizations
@@ -20,6 +21,8 @@ namespace SharpPeg.Optimizations
         public short DelayedAdvance { get; set; } = 0;
 
         public IReadOnlyList<CharRange> CharacterRanges => Method.CharacterRanges;
+
+        public List<LabelMap> FailureLabelMap;
 
         private List<Instruction> instructions = new List<Instruction>();
 
@@ -153,6 +156,13 @@ namespace SharpPeg.Optimizations
             instructions = new List<Instruction>(method.Instructions);
             LabelAllocator = (ushort)method.LabelCount;
             VariableAllocator = (ushort)method.VariableCount;
+            FailureLabelMap = Method.FailureLabelMap.ToList();
+        }
+
+        public void ClearCache()
+        {
+            labelCache = null;
+            backtracer = null;
         }
 
         private bool RangeMatchesRange(int offset, IReadOnlyList<CharacterRange> ranges)

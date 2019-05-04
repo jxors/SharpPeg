@@ -126,7 +126,9 @@ namespace SharpPeg.Optimizations.Default.Analyzers
                                     for (var i = 0; i < Context.Count; i++)
                                     {
                                         var jumpingInstruction = Context[i];
-                                        if (jumpingInstruction.CanJumpToLabel && jumpingInstruction.Label == instruction.Label)
+                                        if ((jumpingInstruction.CanJumpToLabel && jumpingInstruction.Label == instruction.Label)
+                                            ||
+                                            (jumpingInstruction.Type == InstructionType.Call && Context.FailureLabelMap[jumpingInstruction.Data2].Mapping.Any(item => item.jumpTarget == instruction.Label)))
                                         {
                                             result = CheckCharsInternalHelper(true, i, hasHitLabel).UnionWith(result);
                                             if (!result.CanChange)
@@ -226,7 +228,9 @@ namespace SharpPeg.Optimizations.Default.Analyzers
                                     for (var i = 0; i < Context.Count; i++)
                                     {
                                         var jumpingInstruction = Context[i];
-                                        if (jumpingInstruction.CanJumpToLabel && jumpingInstruction.Label == instruction.Label)
+                                        if ((jumpingInstruction.CanJumpToLabel && jumpingInstruction.Label == instruction.Label)
+                                            ||
+                                            (jumpingInstruction.Type == InstructionType.Call && Context.FailureLabelMap[jumpingInstruction.Data2].Mapping.Any(item => item.jumpTarget == instruction.Label)))
                                         {
                                             result = CheckBoundsInternalHelper(true, i, hasHitLabel).UnionWith(result);
                                             if (!result.CanChange)
@@ -304,13 +308,25 @@ namespace SharpPeg.Optimizations.Default.Analyzers
                             {
                                 yield return pos;
                             }
-                            break;// goto previous;
+                            break;
                         case InstructionType.MarkLabel:
                             for (var i = 0; i < Context.Count; i++)
                             {
-                                if (Context[i].CanJumpToLabel && Context[i].Label == instruction.Label)
+                                if ((Context[i].CanJumpToLabel && Context[i].Label == instruction.Label)
+                                    ||
+                                    (Context[i].Type == InstructionType.Call && Context.FailureLabelMap[Context[i].Data2].Mapping.Any(item => item.jumpTarget == instruction.Label)))
                                 {
                                     positionStack.Push(i - (Context[i].Type == InstructionType.Jump ? 1 : 0));
+                                }
+                                else if (Context[i].Matches(InstructionType.Call, out var _1, out var _2, out var _3, out var labelMapping))
+                                {
+                                    foreach(var (_, jumpTarget) in Context.FailureLabelMap[Context[i].Data2].Mapping)
+                                    {
+                                        if (jumpTarget == instruction.Label)
+                                        {
+                                            positionStack.Push(i);
+                                        }
+                                    }
                                 }
                             }
                             goto previous;

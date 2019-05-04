@@ -40,18 +40,6 @@ namespace SharpPeg.Optimizations.Default.Analyzers
             }
         }
 
-        public static IEnumerable<int> GetLabelReferences(List<Instruction> instructions, ushort label)
-        {
-            for(var i = 0; i < instructions.Count; i++)
-            {
-                var instruction = instructions[i];
-                if(instruction.Label == label && instruction.CanJumpToLabel)
-                {
-                    yield return i;
-                }
-            }
-        }
-
         public static int FindJumpTarget(OptimizationContext context, BacktracerView backtracer, int position, bool doRecursion) => FindJumpTargetEx(context, backtracer, position, doRecursion, false).Position;
 
         public static ForwardTraceResult FindJumpTargetEx(OptimizationContext context, BacktracerView backtracer, int position, bool doRecursion, bool allowStores)

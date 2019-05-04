@@ -1,19 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace SharpPeg.Operators
 {
     public class PrioritizedChoice : MultiChildOperator
     {
-        public PrioritizedChoice(Operator childA, Operator childB) : base(childA, childB)
+        public IReadOnlyCollection<int> CaughtFailureLabels;
+
+        public PrioritizedChoice(Operator childA, Operator childB) : this(childA, childB, (IEnumerable<int>)null)
         { }
+
+        public PrioritizedChoice(Operator childA, Operator childB, IEnumerable<int> caughtFailureLabels) : base(childA, childB)
+        {
+            if (caughtFailureLabels != null)
+            {
+                CaughtFailureLabels = caughtFailureLabels.ToList();
+            }
+        }
 
         public PrioritizedChoice(params Operator[] children) : this((IEnumerable<Operator>)children) { }
 
         private PrioritizedChoice() : base(null, null) { }
 
-        public PrioritizedChoice(IEnumerable<Operator> children) : base(null, null)
+        public PrioritizedChoice(IEnumerable<Operator> children, IEnumerable<int> caughtFailureLabels) : base(null, null)
         {
             var stack = new Stack<Operator>(children);
             if (stack.Count <= 2)
@@ -23,12 +34,12 @@ namespace SharpPeg.Operators
             }
             else
             {
-                var current = new PrioritizedChoice(null, stack.Pop());
+                var current = new PrioritizedChoice(null, stack.Pop(), caughtFailureLabels);
 
                 while (stack.Count > 2)
                 {
                     current.ChildA = stack.Pop();
-                    current = new PrioritizedChoice(null, current);
+                    current = new PrioritizedChoice(null, current, caughtFailureLabels);
                 }
 
                 current.ChildA = stack.Pop();
@@ -36,6 +47,10 @@ namespace SharpPeg.Operators
                 ChildB = current;
             }
         }
+
+
+        public PrioritizedChoice(IEnumerable<Operator> children) : this(children, null)
+        { }
 
         protected override Operator DuplicateInternal(Dictionary<Operator, Operator> mapping) => new PrioritizedChoice(ChildA.Duplicate(mapping), ChildB.Duplicate(mapping));
 

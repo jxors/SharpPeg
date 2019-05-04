@@ -53,7 +53,7 @@ namespace SharpPeg.Optimizations.Default
                 }
             }
 
-            // TODO: the preconditions are narrow. Need a more generic matching approach!
+            //TODO: the preconditions are narrow. Need a more generic matching approach!
             for (var i = context.Count - 1; i >= 0; i--)
             {
                 var instruction = context[i];
@@ -68,6 +68,7 @@ namespace SharpPeg.Optimizations.Default
                     if (nd.Result)
                     {
                         context.RemoveAt(i);
+                        changed = true;
                     }
                 }
             }
@@ -107,11 +108,14 @@ namespace SharpPeg.Optimizations.Default
                                 case InstructionType.Char:
                                 case InstructionType.Jump:
                                 case InstructionType.Call:
-                                    if (context[i].Label == instruction.Label)
+                                    foreach (var (_, jumpTarget) in context.FailureLabelMap[context[i].Data2].Mapping)
                                     {
-                                        if(!WillHaveAdvancedAtSince(context, i, sincePosition, processed))
+                                        if (jumpTarget == instruction.Label)
                                         {
-                                            return false;
+                                            if (!WillHaveAdvancedAtSince(context, i, sincePosition, processed))
+                                            {
+                                                return false;
+                                            }
                                         }
                                     }
                                     break;

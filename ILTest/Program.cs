@@ -9,6 +9,9 @@ using SharpPeg.Compilation;
 using SharpPeg.Optimizations;
 using SharpPeg.Runner.ILRunner;
 using SharpPeg.Runner;
+using System.IO;
+using PegMatch;
+using PegMatch.Grammar;
 
 namespace ILTest
 {
@@ -33,6 +36,7 @@ namespace ILTest
             var regexGrammar = new Lazy<RegexGrammar>(() => new RegexGrammar(patternCompiler));
             var converter = new RegexConverter();
             var helper = new PegHelper(patternCompiler);
+            var extended = new ExtendedPegGrammar();
             helper.EnsureExpressionBuilt();
             //CompileAndWritePatternToFile("PegExpression", helper.GetExpressionPattern());
 
@@ -56,7 +60,7 @@ namespace ILTest
             //var patternStr = "'Twain'";
             //var patternStr = "[a-z] 'shing'";
             //var patternStr = "[a-z]+";
-            //var patternStr = "('Huck'[a-zA-Z]+) / ('Saw'[a-zA-Z]+)";
+            var patternStr = "('Huck'[a-zA-Z]+) / ('Saw'[a-zA-Z]+)";
             //var m = $"[{char.MinValue}-uz-{char.MaxValue}]";
             //var patternStr = $"[a-q]{m}{m}{m}{m}{m}{m}{m}{m}{m}{m}{m}{m}{m} 'x'";
             //var pattern = CompileAndWritePatternToFile("SimpleMatch", new Pattern("SimpleMatch") { Data = helper.ParseExpression("[a-z]*") });
@@ -67,8 +71,10 @@ namespace ILTest
             //var a = new Pattern("A");
             //a.Data = new PrioritizedChoice(new Sequence(letters, a), new Empty());
             //var p = new Sequence(letters, a);
-            var p = new Sequence(new PrioritizedChoice('T', 'R'), "om");//Operator.EndingWithGreedy(capitalsAndNonCapitals, CharacterClass.String("ing"));
+            //var p = new Sequence(new PrioritizedChoice('T', 'R'), "om");//Operator.EndingWithGreedy(capitalsAndNonCapitals, CharacterClass.String("ing"));
             //var p = helper.ParseExpression(patternStr);
+            var ps = extended.ParseGrammar(File.ReadAllText("testdata.peg"));
+            var p = ps.Last();
 
             var s2 = new Stopwatch();
             s2.Start();

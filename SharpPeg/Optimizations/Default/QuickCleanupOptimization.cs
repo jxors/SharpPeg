@@ -22,8 +22,13 @@ namespace SharpPeg.Optimizations.Default
                 var instruction = context[i];
                 switch (instruction.Type)
                 {
-                    case InstructionType.Char:
                     case InstructionType.Call:
+                        foreach(var (_, targetLabel) in context.FailureLabelMap[instruction.Data2].Mapping)
+                        {
+                            labelsUsed[targetLabel]++;
+                        }
+                        break;
+                    case InstructionType.Char:
                     case InstructionType.BoundsCheck:
                     case InstructionType.Jump:
                         labelsUsed[instruction.Label]++;
@@ -98,6 +103,22 @@ namespace SharpPeg.Optimizations.Default
                 }
             }
 
+            // Remap label-jump patterns
+            for (var i = context.Count - 2; i >= 0; i--)
+            {
+                var instruction = context[i];
+                switch (instruction.Type)
+                {
+                    case InstructionType.MarkLabel:
+                        if (context[i + 1].Matches(InstructionType.Jump, out var secondTarget))
+                        {
+                            labelMappings[instruction.Label] = labelMappings[secondTarget];
+                            context.RemoveAt(i);
+                        }
+                        break;
+                }
+            }
+
             // Re-index labels & variables
             changed |= ReindexLabels(context, labelsUsed, labelMappings);
             changed |= ReindexVariables(context, variablesUsed);
@@ -125,7 +146,6 @@ namespace SharpPeg.Optimizations.Default
                     switch (instruction.Type)
                     {
                         case InstructionType.Char:
-                        case InstructionType.Call:
                         case InstructionType.BoundsCheck:
                         case InstructionType.Jump:
                         case InstructionType.MarkLabel:
@@ -142,7 +162,14 @@ namespace SharpPeg.Optimizations.Default
                     }
                 }
 
+                context.FailureLabelMap = context.FailureLabelMap
+                    .Select(map => new LabelMap(map
+                        .Mapping
+                        .Select(kvp => (kvp.failureLabel, reindexedLabels[labelMappings[kvp.jumpTarget]])))
+                    )
+                    .ToList();
                 context.LabelAllocator = numUsedLabels;
+                context.ClearCache();
                 return true;
             }
 
@@ -194,8 +221,13 @@ namespace SharpPeg.Optimizations.Default
                 {
                     switch (context[i + 1].Type)
                     {
-                        case InstructionType.Char:
                         case InstructionType.Call:
+                            foreach (var (_, targetLabel) in context.FailureLabelMap[instruction.Data2].Mapping)
+                            {
+                                labelsUsed[targetLabel]--;
+                            }
+                            break;
+                        case InstructionType.Char:
                         case InstructionType.BoundsCheck:
                         case InstructionType.Jump:
                             labelsUsed[instruction.Label]--;

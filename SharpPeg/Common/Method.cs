@@ -11,6 +11,7 @@ namespace SharpPeg.Common
     {
         public IReadOnlyList<Instruction> Instructions { get; }
         public IReadOnlyList<CharRange> CharacterRanges { get; }
+        public IReadOnlyList<LabelMap> FailureLabelMap { get; }
 
         public int VariableCount { get; }
         public int LabelCount { get; }
@@ -19,10 +20,11 @@ namespace SharpPeg.Common
 
         public int NumPlaceholderPatterns { get; } = 0;
 
-        public Method(string name, IReadOnlyList<Instruction> instructions, IReadOnlyList<CharRange> characterRanges, int variableCount, int labelCount)
+        public Method(string name, IReadOnlyList<Instruction> instructions, IReadOnlyList<CharRange> characterRanges, IReadOnlyList<LabelMap> failureLabelMap, int variableCount, int labelCount)
         {
             Instructions = instructions;
             CharacterRanges = characterRanges;
+            FailureLabelMap = failureLabelMap;
             VariableCount = variableCount;
             LabelCount = labelCount;
             Name = name;

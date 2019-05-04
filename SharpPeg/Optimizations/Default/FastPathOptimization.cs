@@ -66,6 +66,16 @@ namespace SharpPeg.Optimizations.Default
                                     {
                                         canMakeFastPath = false;
                                     }
+                                } else if(j >= startPosition && j <= endPosition && context[j].Type == InstructionType.Call)
+                                {
+                                    foreach(var (_, jumpTarget) in context.FailureLabelMap[context[j].Data2].Mapping)
+                                    {
+                                        if(context.GetLabelPosition(jumpTarget) < startPosition || context.GetLabelPosition(jumpTarget) > endPosition)
+                                        {
+                                            canMakeFastPath = false;
+                                            break;
+                                        }
+                                    }
                                 }
                             }
 

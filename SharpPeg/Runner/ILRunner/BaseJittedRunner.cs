@@ -180,7 +180,7 @@ namespace SharpPeg.Runner.ILRunner
             }
         }
 
-        protected abstract unsafe char* RunInternal(char* position);
+        protected abstract unsafe UnsafePatternResult RunInternal(char* position);
 
         public RunResult Run(char[] inputData, int index, int length, List<Capture> captureOutput = null)
         {
@@ -229,14 +229,8 @@ namespace SharpPeg.Runner.ILRunner
                     }
                 }
 
-                if (result == null)
-                {
-                    return new RunResult(false, 0, 0);
-                }
-                else
-                {
-                    return new RunResult(true, (int)(result - dataPtr), 0);
-                }
+                var position = (int)(result.Position - dataPtr);
+                return new RunResult(result.Label == 0, result.Label, position, 0);
             }
         }
 

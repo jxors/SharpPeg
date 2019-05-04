@@ -158,6 +158,8 @@ namespace SharpPegTests
             var withoutOptimizationRunner = without.Optimize(unoptimized);
             var withOptimizationRunner = with.Optimize(unoptimized);
 
+            Console.WriteLine($"Optimization results: \n{string.Join("\n", withoutOptimizationRunner.Methods[0].Instructions)}\n\n vs \n{string.Join("\n", withOptimizationRunner.Methods[0].Instructions)}\n\n");
+
             return !AreEqual(withoutOptimizationRunner.Methods[0].Instructions, withOptimizationRunner.Methods[0].Instructions);
         }
 

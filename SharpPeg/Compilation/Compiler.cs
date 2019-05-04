@@ -72,6 +72,7 @@ namespace SharpPeg.Compilation
                     p.Name,
                     context.ToList(),
                     pp.Method.CharacterRanges,
+                    pp.Method.FailureLabelMap,
                     pp.Method.VariableCount,
                     pp.Method.LabelCount
                 );
@@ -80,37 +81,41 @@ namespace SharpPeg.Compilation
             {
                 var context = new CompilerContext(patternInfo, patternIndices);
                 var failLabel = context.LabelAllocator++;
-                Compile(p.Data, failLabel, context);
+                Compile(p.Data, new Dictionary<int, ushort>
+                {
+                    { LabelMap.DEFAULT_FAIL_LABEL, failLabel },
+                }, context);
                 context.Flush();
 
-                context.Add(Instruction.Return(1));
-                context.Add(Instruction.MarkLabel(failLabel));
                 context.Add(Instruction.Return(0));
+                context.Add(Instruction.MarkLabel(failLabel));
+                context.Add(Instruction.Return(LabelMap.DEFAULT_FAIL_LABEL));
 
                 return new Method(
                     p.Name,
                     context.ToList(),
                     context.CharacterRanges,
+                    context.FailureLabelMap,
                     context.VariableAllocator,
                     context.LabelAllocator
                 );
             }
         }
 
-        private void Compile(Operator op, ushort failLabel, CompilerContext context)
+        private void Compile(Operator op, Dictionary<int, ushort> failLabelMap, CompilerContext context)
         {
             switch (op)
             {
                 case Empty _:
                     break;
                 case Any _:
-                    context.UpdateOrSetBoundsCheck(failLabel, context.DelayedAdvance);
+                    context.UpdateOrSetBoundsCheck(failLabelMap[LabelMap.DEFAULT_FAIL_LABEL], context.DelayedAdvance);
                     context.DelayedAdvance += 1;
                     break;
                 case CharacterClass c:
-                    context.UpdateOrSetBoundsCheck(failLabel, context.DelayedAdvance);
+                    context.UpdateOrSetBoundsCheck(failLabelMap[LabelMap.DEFAULT_FAIL_LABEL], context.DelayedAdvance);
                     var pointer = context.GetCharRange(c.Ranges);
-                    context.Add(Instruction.Char(failLabel, context.DelayedAdvance, (ushort)pointer, (ushort)(pointer + c.Ranges.Count)));
+                    context.Add(Instruction.Char(failLabelMap[LabelMap.DEFAULT_FAIL_LABEL], context.DelayedAdvance, (ushort)pointer, (ushort)(pointer + c.Ranges.Count)));
                     context.DelayedAdvance += 1;
                     break;
                 case Pattern p:
@@ -131,16 +136,16 @@ namespace SharpPeg.Compilation
                             throw new NotImplementedException();
                         }
 
-                        context.Add(Instruction.Call(failLabel, (ushort)patternId));
+                        context.Add(Instruction.Call(context.GetFailLabelMap(failLabelMap), (ushort)patternId));
                     }
                     else
                     {
-                        Compile(p.Data, failLabel, context);
+                        Compile(p.Data, failLabelMap, context);
                     }
                     break;
                 case Sequence seq:
-                    Compile(seq.ChildA, failLabel, context);
-                    Compile(seq.ChildB, failLabel, context);
+                    Compile(seq.ChildA, failLabelMap, context);
+                    Compile(seq.ChildB, failLabelMap, context);
                     break;
                 case Not n:
                     {
@@ -148,10 +153,10 @@ namespace SharpPeg.Compilation
                         var innerFailLabel = context.LabelAllocator++;
                         
                         var variable = StorePosition(context);
-                        Compile(n.Child, innerFailLabel, context);
+                        Compile(n.Child, failLabelMap.ExtendWith(LabelMap.DEFAULT_FAIL_LABEL, innerFailLabel), context);
                         context.Flush();
 
-                        context.Add(Instruction.Jump(failLabel));
+                        context.Add(Instruction.Jump(failLabelMap[LabelMap.DEFAULT_FAIL_LABEL]));
                         context.Add(Instruction.MarkLabel(innerFailLabel));
                         context.Add(Instruction.RestorePosition(0, variable));
                     }
@@ -165,7 +170,7 @@ namespace SharpPeg.Compilation
                         context.Add(Instruction.MarkLabel(startLabel));
                         
                         var variable = StorePosition(context);
-                        Compile(zom.Child, innerFailLabel, context);
+                        Compile(zom.Child, failLabelMap.ExtendWith(LabelMap.DEFAULT_FAIL_LABEL, innerFailLabel), context);
                         context.Flush();
 
                         context.Add(Instruction.Jump(startLabel));
@@ -180,14 +185,14 @@ namespace SharpPeg.Compilation
                         var innerFailLabel = context.LabelAllocator++;
                         
                         var variable = StorePosition(context);
-                        Compile(pc.ChildA, innerFailLabel, context);
+                        Compile(pc.ChildA, failLabelMap.ExtendWith(pc.CaughtFailureLabels ?? new[] { LabelMap.DEFAULT_FAIL_LABEL }, innerFailLabel), context);
                         context.Flush();
 
                         context.Add(Instruction.Jump(endLabel));
                         context.Add(Instruction.MarkLabel(innerFailLabel));
                         context.Add(Instruction.RestorePosition(0, variable));
 
-                        Compile(pc.ChildB, failLabel, context);
+                        Compile(pc.ChildB, failLabelMap, context);
                         context.Flush();
                         context.Add(Instruction.MarkLabel(endLabel));
                     }
@@ -196,10 +201,21 @@ namespace SharpPeg.Compilation
                     {
                         context.Flush();
                         var variable = StorePosition(context);
-                        Compile(cg.Child, failLabel, context);
+                        Compile(cg.Child, failLabelMap, context);
                         context.Flush();
                         
                         context.Add(Instruction.Capture(variable, (ushort)cg.Key));
+                    }
+                    break;
+                case Throw th:
+                    {
+                        if(failLabelMap.TryGetValue(th.FailureLabel, out var targetLabel))
+                        {
+                            context.Add(Instruction.Jump(targetLabel));
+                        } else
+                        {
+                            context.Add(Instruction.Return((ushort)th.FailureLabel));
+                        }
                     }
                     break;
                 default:

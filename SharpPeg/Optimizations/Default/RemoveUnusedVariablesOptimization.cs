@@ -29,9 +29,12 @@ namespace SharpPeg.Optimizations.Default
             {
                 foreach(var kvp in other.offsets)
                 {
-                    if (offsets.TryGetValue(kvp.Key, out var value))
+                    if(kvp.Value == -1)
                     {
-                        if (value != kvp.Value + offset)
+                        offsets[kvp.Key] = -1;
+                    } else if (offsets.TryGetValue(kvp.Key, out var value))
+                    {
+                        if (value == -1 || value != kvp.Value + offset)
                         {
                             offsets[kvp.Key] = -1;
                         }
@@ -152,7 +155,10 @@ namespace SharpPeg.Optimizations.Default
                             break;
                         case InstructionType.Call:
                             currentInfo.Invalidate();
-                            offsetInfo[labelPositions[instruction.Label]].UnionWith(currentInfo);
+                            foreach (var (_, jumpTarget) in context.FailureLabelMap[instruction.Data2].Mapping)
+                            {
+                                offsetInfo[labelPositions[jumpTarget]].UnionWith(currentInfo);
+                            }
                             break;
                     }
 

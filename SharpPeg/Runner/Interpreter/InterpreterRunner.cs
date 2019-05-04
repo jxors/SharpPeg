@@ -43,11 +43,11 @@ namespace SharpPeg.Runner.Interpreter
 
             var result = InternalRun(Methods[0], LabelPositions[0], index);
             CaptureOutput?.Sort();
-            var successful = result != -1;
-            return new RunResult(successful, successful ? result : 0, 0);
+            var successful = result.Label == 0;
+            return new RunResult(successful, result.Label, result.Position, 0);
         }
 
-        private int InternalRun(Method method, int[] labelPositions, int pos)
+        private SafePatternResult InternalRun(Method method, int[] labelPositions, int pos)
         {
             var instructions = method.Instructions;
             var variables = new int[method.VariableCount];
@@ -108,13 +108,30 @@ namespace SharpPeg.Runner.Interpreter
                         }
                         break;
                     case InstructionType.Call:
-                        pos = InternalRun(Methods[instr.Data1], LabelPositions[instr.Data1], pos);
-                        if(pos == -1)
+                        var result = InternalRun(Methods[instr.Data1], LabelPositions[instr.Data1], pos);
+                        if(result.Label == 0)
                         {
-                            pc = labelPositions[instr.Label];
+                            pos = result.Position;
+                        } else
+                        {
+                            var found = false;
+                            foreach (var (fl, target) in method.FailureLabelMap[instr.Data2].Mapping)
+                            {
+                                if (fl == result.Label)
+                                {
+                                    pc = labelPositions[target];
+                                    found = true;
+                                    break;
+                                }
+                            }
+
+                            if(!found)
+                            {
+                                return result;
+                            }
                         }
                         break;
-                    case InstructionType.Return: return instr.Data1 == 0  ? -1 : pos;
+                    case InstructionType.Return: return new SafePatternResult(instr.Data1, pos);
                     case InstructionType.MarkLabel: break;
                     default: throw new NotImplementedException();
                 }

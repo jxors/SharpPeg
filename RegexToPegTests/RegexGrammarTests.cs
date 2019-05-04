@@ -61,7 +61,7 @@ namespace RegexToPegTests
             var runner = PatternCompiler.Default.Compile(new Pattern() { Data = c });
             var result = runner.Run(s);
 
-            Assert.IsTrue(result.IsSuccessful && result.InputPosition >= s.Length, $"PEG from regex {regex} must match {s}. Matched {result.InputPosition} characters");
+            Assert.IsTrue(result.IsSuccessful && result.InputPosition >= s.Length, $"PEG from regex {regex} must match {s}. Matched {result.InputPosition} characters. Success: {result.IsSuccessful}");
         }
     }
 }

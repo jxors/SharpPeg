@@ -19,14 +19,14 @@ namespace SharpPegTests
                 Instruction.Char(0, 0, 0, 1),
                 Instruction.Char(0, 1, 1, 2),
                 Instruction.Advance(2),
-                Instruction.Return(1),
-                Instruction.MarkLabel(0),
                 Instruction.Return(0),
+                Instruction.MarkLabel(0),
+                Instruction.Return(1),
             }, new List<CharRange>()
             {
                 new CharRange('a', 'a'),
                 new CharRange('b', 'b'),
-            }, 0, 1), new List<Pattern>());
+            }, new List<LabelMap>(), 0, 1), new List<Pattern>());
 
             MustMatch(p, "ab");
             MustNotMatch(p, "bb");

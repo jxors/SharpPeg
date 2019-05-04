@@ -22,33 +22,34 @@ namespace SharpPeg.Optimizations.Default
                 var instruction = context[i];
                 switch (instruction.Type)
                 {
+                    // TODO: Can we optimize a Call-instruction here?
                     case InstructionType.Char:
-                    case InstructionType.Call:
                     case InstructionType.BoundsCheck:
                     case InstructionType.Jump:
-                        var backtracer = new BacktracerView(context.Backtracer, i, true);
-                        if (!instruction.IsCharOrBoundsCheck)
                         {
-                            backtracer = new BacktracerView(context.Backtracer, i - 1, false);
-                        }
-
-                        var result = InstructionHelper.FindJumpTargetEx(context, backtracer, context.GetLabelPosition(instruction.Label), FullPathSearch, false);
-                        if (!context[result.Position - 1].Matches(InstructionType.MarkLabel, instruction.Label))
-                        {
-                            if (context[result.Position - 1].Matches(InstructionType.MarkLabel, out var newTarget))
+                            var backtracer = new BacktracerView(context.Backtracer, i, true);
+                            if (!instruction.IsCharOrBoundsCheck)
                             {
-                                context.NonDestructiveUpdate(i, instruction.WithLabel(newTarget));
-                            }
-                            else
-                            {
-                                var newLabel = context.LabelAllocator++;
-                                context.NonDestructiveUpdate(i, instruction.WithLabel(newLabel));
-                                context.Insert(result.Position, Instruction.MarkLabel(newLabel), true);
+                                backtracer = new BacktracerView(context.Backtracer, i - 1, false);
                             }
 
-                            changed = true;
-                        }
+                            var result = InstructionHelper.FindJumpTargetEx(context, backtracer, context.GetLabelPosition(instruction.Label), FullPathSearch, false);
+                            if (!context[result.Position - 1].Matches(InstructionType.MarkLabel, instruction.Label))
+                            {
+                                if (context[result.Position - 1].Matches(InstructionType.MarkLabel, out var newTarget))
+                                {
+                                    context.NonDestructiveUpdate(i, instruction.WithLabel(newTarget));
+                                }
+                                else
+                                {
+                                    var newLabel = context.LabelAllocator++;
+                                    context.NonDestructiveUpdate(i, instruction.WithLabel(newLabel));
+                                    context.Insert(result.Position, Instruction.MarkLabel(newLabel), true);
+                                }
 
+                                changed = true;
+                            }
+                        }
                         break;
                 }
             }

@@ -133,7 +133,7 @@ namespace PegMatch
                 }
             }
 
-            foreach (var customPath in Environment.GetEnvironmentVariable("PEG_LIBRARY_PATH")?.Split(';', StringSplitOptions.RemoveEmptyEntries) ?? new string[0])
+            foreach (var customPath in Environment.GetEnvironmentVariable("PEG_LIBRARY_PATH")?.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries) ?? new string[0])
             {
                 paths.Add(customPath.Trim());
             }
