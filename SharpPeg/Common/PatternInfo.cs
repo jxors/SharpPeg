@@ -13,6 +13,7 @@ namespace SharpPeg.Common
         public int NumNodes { get; private set; } = 0;
 
         public List<Pattern> PatternCalls { get; private set; } = new List<Pattern>();
+        public List<Pattern> CalledBy { get; private set; } = new List<Pattern>();
 
         private PatternInfo() { }
 
@@ -49,6 +50,7 @@ namespace SharpPeg.Common
                         {
                             ProcessPattern(p);
                             info.PatternCalls.Add(p);
+                            output[p].CalledBy.Add(currentElement);
                             info.ContainsCaptures |= output[p].ContainsCaptures;
                         }
                         else

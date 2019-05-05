@@ -24,7 +24,26 @@ namespace SharpPeg.Optimizations.Default
             return labelPositions;
         }
 
+        protected static IEnumerable<ushort> GetJumpTargets(OptimizationContext context, Instruction instruction)
+        {
+            if(instruction.CanJumpToLabel)
+            {
+                yield return instruction.Label;
+            } else if(instruction.Type == InstructionType.Call)
+            {
+                foreach(var kvp in context.FailureLabelMap[instruction.Data2].Mapping)
+                {
+                    yield return kvp.jumpTarget;
+                }
+            }
+        }
+
         protected ushort AddStub(OptimizationContext context, ushort targetLabel, Instruction instruction, ref int position)
+        {
+            return AddStub(context, targetLabel, new[] { instruction }, ref position);
+        }
+
+        protected ushort AddStub(OptimizationContext context, ushort targetLabel, Instruction[] instructions, ref int position)
         {
             var labelPosition = context.GetLabelPosition(targetLabel);
 
@@ -34,22 +53,18 @@ namespace SharpPeg.Optimizations.Default
                 // No need for jump, because the instruction before the MarkLabel instruction will never advance the pc by 1
                 context.InsertRange(labelPosition, new[]{
                     Instruction.MarkLabel(newLabel),
-                    instruction,
-                });
+                }.Concat(instructions).ToArray());
 
                 if (labelPosition < position)
                 {
-                    position += 2;
+                    position += 1 + instructions.Length;
                 }
 
                 return newLabel;
             }
             else
             {
-                var existing = FindOrMarkExistingStub(context, new Instruction[]
-                {
-                    instruction
-                }, targetLabel, ref position);
+                var existing = FindOrMarkExistingStub(context, instructions, targetLabel, ref position);
 
                 if (existing.HasValue)
                 {
@@ -61,12 +76,11 @@ namespace SharpPeg.Optimizations.Default
                         context.InsertRange(labelPosition, new[]{
                         Instruction.Jump(targetLabel),
                         Instruction.MarkLabel(newLabel),
-                        instruction,
-                    });
+                    }.Concat(instructions).ToArray());
 
                     if (labelPosition < position)
                     {
-                        position += 3;
+                        position += 2 + instructions.Length;
                     }
 
                     return newLabel;

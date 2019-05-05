@@ -129,7 +129,7 @@ namespace SharpPeg.Compilation
                     var patternInfo = context.PatternInfo[p];
                     if (p is PrecompiledPattern 
                         || !InlinePatterns
-                        || (!(p.Data is Pattern) && (patternInfo.IsRecursive || patternInfo.NumNodes > 16 || patternInfo.PatternCalls.Count > 0)))
+                        || (!(p.Data is Pattern) && (patternInfo.IsRecursive || patternInfo.NumNodes > 16 || patternInfo.CalledBy.Count > 1)))
                     {
                         if (!context.PatternIndices.TryGetValue(p, out var patternId))
                         {
@@ -170,7 +170,9 @@ namespace SharpPeg.Compilation
                         context.Add(Instruction.MarkLabel(startLabel));
                         
                         var variable = StorePosition(context);
+                        context.InsideLoop++;
                         Compile(zom.Child, failLabelMap.ExtendWith(LabelMap.DEFAULT_FAIL_LABEL, innerFailLabel), context);
+                        context.InsideLoop--;
                         context.Flush();
 
                         context.Add(Instruction.Jump(startLabel));

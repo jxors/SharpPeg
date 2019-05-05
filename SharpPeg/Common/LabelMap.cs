@@ -17,5 +17,20 @@ namespace SharpPeg.Common
         {
             this.mapping = mapping.ToList();
         }
+
+        public bool TryGet(int index, out ushort result)
+        {
+            foreach(var (failureLabel, jumpTarget) in mapping)
+            {
+                if(failureLabel == index)
+                {
+                    result = jumpTarget;
+                    return true;
+                }
+            }
+
+            result = 0;
+            return false;
+        }
     }
 }

@@ -16,6 +16,22 @@ namespace SharpPeg.Optimizations.Default
             var labelMappings = new int[context.LabelAllocator];
             var variablesUsed = new int[context.VariableAllocator];
 
+            // Inline returns
+            for (var i = 0; i < context.Count; i++)
+            {
+                if(context[i].Matches(InstructionType.MarkLabel, out var label)
+                    && context[i + 1].Matches(InstructionType.Return))
+                {
+                    for(var j = 0; j < context.Count; j++)
+                    {
+                        if (context[j].Matches(InstructionType.Jump, label))
+                        {
+                            context[j] = context[i + 1];
+                        }
+                    }
+                }
+            }
+
             // Count label usage
             for (var i = 0; i < context.Count; i++)
             {

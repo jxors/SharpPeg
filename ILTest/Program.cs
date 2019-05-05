@@ -9,9 +9,6 @@ using SharpPeg.Compilation;
 using SharpPeg.Optimizations;
 using SharpPeg.Runner.ILRunner;
 using SharpPeg.Runner;
-using System.IO;
-using PegMatch;
-using PegMatch.Grammar;
 
 namespace ILTest
 {
@@ -36,7 +33,6 @@ namespace ILTest
             var regexGrammar = new Lazy<RegexGrammar>(() => new RegexGrammar(patternCompiler));
             var converter = new RegexConverter();
             var helper = new PegHelper(patternCompiler);
-            var extended = new ExtendedPegGrammar();
             helper.EnsureExpressionBuilt();
             //CompileAndWritePatternToFile("PegExpression", helper.GetExpressionPattern());
 
@@ -60,7 +56,7 @@ namespace ILTest
             //var patternStr = "'Twain'";
             //var patternStr = "[a-z] 'shing'";
             //var patternStr = "[a-z]+";
-            var patternStr = "('Huck'[a-zA-Z]+) / ('Saw'[a-zA-Z]+)";
+            //var patternStr = "('Huck'[a-zA-Z]+) / ('Saw'[a-zA-Z]+)";
             //var m = $"[{char.MinValue}-uz-{char.MaxValue}]";
             //var patternStr = $"[a-q]{m}{m}{m}{m}{m}{m}{m}{m}{m}{m}{m}{m}{m} 'x'";
             //var pattern = CompileAndWritePatternToFile("SimpleMatch", new Pattern("SimpleMatch") { Data = helper.ParseExpression("[a-z]*") });
@@ -72,9 +68,11 @@ namespace ILTest
             //a.Data = new PrioritizedChoice(new Sequence(letters, a), new Empty());
             //var p = new Sequence(letters, a);
             //var p = new Sequence(new PrioritizedChoice('T', 'R'), "om");//Operator.EndingWithGreedy(capitalsAndNonCapitals, CharacterClass.String("ing"));
-            //var p = helper.ParseExpression(patternStr);
-            var ps = extended.ParseGrammar(File.ReadAllText("testdata.peg"));
-            var p = ps.Last();
+            //var ws = new Pattern { Data = new ZeroOrMore(new CharacterClass(' ')) };
+            //var p1 = new Pattern { Data = new Sequence(ws, CharacterClass.String("abc")) };
+            //var p2 = new Pattern { Data = new Sequence(ws, CharacterClass.String("xyz")) };
+            //var p = new PrioritizedChoice(p1, p2);
+            var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, converter.Convert(regexGrammar.Value.ParseExpression("([A-Za-z]awyer|[A-Za-z]inn)\\s"))), new Any()));
 
             var s2 = new Stopwatch();
             s2.Start();
@@ -87,7 +85,7 @@ namespace ILTest
             var pattern = CompileAndWritePatternToFile("SimpleMatch", peg);
             Console.WriteLine($"Saved ({s2.ElapsedMilliseconds}ms)");
 
-            var text = "abHuckleberry sntasoretneirtneisrnteisrnietaneristniesra river Tom Tom river";
+            var text = "Tom..Huckleberry  Finn         Tom  Tom  Huck\nFinn,";
             var capts = new List<Capture>();
             var runResult = pattern.Run(text, capts);
             if (runResult.IsSuccessful && runResult.InputPosition == text.Length)
@@ -95,42 +93,37 @@ namespace ILTest
                 Console.WriteLine($"Successful match on '{text}'");
             }
 
-            for (var i = 0; i < 1000; i++)
-            {
-                //new SharpPeg.Runner.ILCompiler.Compiler(peg).Compile();
-            }
+            //for (var n = 0; n < 10; n++)
+            //{
+            //    for (var x = 0; x < 25; x++)
+            //    {
+            //        //var pegGrammar = new PegGrammar(new ILInterpreterFactory());
+            //        //pegGrammar.EnsureExpressionBuilt();
 
-            for (var n = 0; n < 100; n++)
-            {
-                for (var x = 0; x < 25; x++)
-                {
-                    //var pegGrammar = new PegGrammar(new ILInterpreterFactory());
-                    //pegGrammar.EnsureExpressionBuilt();
+            //        //var expression = pegGrammar.ParseExpression("'th' [a-z]+");
+            //        //var compiler = (new ILCompilerFactory()).Create(new Pattern
+            //        //{
+            //        //    Data = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, expression), new Any()))
+            //        //});
 
-                    //var expression = pegGrammar.ParseExpression("'th' [a-z]+");
-                    //var compiler = (new ILCompilerFactory()).Create(new Pattern
-                    //{
-                    //    Data = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, expression), new Any()))
-                    //});
+            //        Stopwatch s = new Stopwatch();
+            //        s.Start();
+            //        var result = default(RunResult);
+            //        var captures = new List<Capture>();
 
-                    Stopwatch s = new Stopwatch();
-                    s.Start();
-                    var result = default(RunResult);
-                    var captures = new List<Capture>();
-
-                    for (var i = 0; i < 1000; i++)
-                    {
-                        captures = new List<Capture>();
-                        result = pattern.Run(input, 0, input.Length, captures);
-                        if (!result.IsSuccessful)
-                        {
-                            Console.WriteLine("Match fail");
-                        }
-                    }
-                    s.Stop();
-                    Console.WriteLine($"That took {s.ElapsedMilliseconds}ms ({captures.Count})");
-                }
-            }
+            //        for (var i = 0; i < 1000; i++)
+            //        {
+            //            captures = new List<Capture>();
+            //            result = pattern.Run(input, 0, input.Length, captures);
+            //            if (!result.IsSuccessful)
+            //            {
+            //                Console.WriteLine("Match fail");
+            //            }
+            //        }
+            //        s.Stop();
+            //        Console.WriteLine($"That took {s.ElapsedMilliseconds}ms ({captures.Count})");
+            //    }
+            //}
 
             Console.ReadKey();
         }

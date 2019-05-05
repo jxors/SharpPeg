@@ -12,6 +12,7 @@ namespace SharpPeg.Compilation
     {
         public ushort LabelAllocator { get; set; } = 0;
         public ushort VariableAllocator { get; set; } = 0;
+        public int InsideLoop { get; set; } = 0;
 
         public IReadOnlyList<Instruction> Instructions => instructions;
 

@@ -20,7 +20,8 @@ namespace SharpPeg.Optimizations
             new RemoveUnusedAdvancesOptimization(),
             new DelayBoundsCheckOptimization(),
             new DeduplicationOptimization(),
-            new RemoveUnusedStorePositionOptimization()
+            new RemoveUnusedStorePositionOptimization(),
+            new PrefixUnificationOptimization(),
         };
 
         public OptimizationBase[] RareOptimizations { get; set; } = new OptimizationBase[] {
@@ -47,7 +48,7 @@ namespace SharpPeg.Optimizations
 
             var context = new OptimizationContext(m);
 
-            for (var i = 0; i < 256; i++)
+            for (var i = 0; i < 255; i++)
             {
                 Debug.WriteLine($"Optimization iteration {i}");
 

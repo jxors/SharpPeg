@@ -85,6 +85,9 @@ namespace SharpPegTests
         [TestMethod]
         public void MergeVariableOptimization() => OptimizationEffectiveness<MergeVariableOptimization>();
 
+        [TestMethod]
+        public void PrefixUnificationOptimization() => OptimizationEffectiveness<PrefixUnificationOptimization>();
+
         //[TestMethod]
         //public void RemoveUnneededStorePositionOptimization() => OptimizationEffectiveness<RemoveUnusedStorePositionOptimization>();
 
@@ -106,6 +109,7 @@ namespace SharpPegTests
                 new RemoveUnneededChecksOptimization(true),
                 new RemoveUnneededVariableOperationsOptimization(),
                 new FastPathOptimization(),
+                new PrefixUnificationOptimization(),
             };
 
             TestEffectiveness(typeof(T).Name, new DefaultOptimizer()
@@ -122,6 +126,7 @@ namespace SharpPegTests
         private void TestEffectiveness(string name, IOptimizer without, IOptimizer with)
         {
             var noEnters = new Sequence(new Not(new CharacterClass('\n', '\r')), new Any());
+            var ws = new Pattern { Data = new ZeroOrMore(new CharacterClass(' ')) };
             var ops = new Operator[]
             {
                 new Sequence(new CharacterClass('a', 'z'), new CharacterClass('b')),
@@ -137,6 +142,7 @@ namespace SharpPegTests
                     new CaptureGroup(2, new Sequence(noEnters, new CaptureGroup(1, new PrioritizedChoice("Tom", "Sawyer", "Huckleberry", "Finn")))),
                     new CaptureGroup(1, new PrioritizedChoice("Tom", "Sawyer", "Huckleberry", "Finn"))
                 )))),
+                new PrioritizedChoice(new Pattern { Data = new Sequence(ws, CharacterClass.String("abc")) }, new Pattern { Data = new Sequence(ws, CharacterClass.String("xyz")) })
             };
 
             foreach (var op in ops)

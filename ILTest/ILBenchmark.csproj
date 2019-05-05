@@ -102,15 +102,8 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
-    <None Include="testdata.peg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\peg-match\peg-match.csproj">
-      <Project>{a22d3cf3-670d-4864-8bdc-46a654cc2bd8}</Project>
-      <Name>peg-match</Name>
-    </ProjectReference>
     <ProjectReference Include="..\SharpPeg\SharpPeg.csproj">
       <Project>{9dbbdca5-3ab2-469e-9cdd-184ac548ff76}</Project>
       <Name>SharpPeg</Name>

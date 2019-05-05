@@ -37,9 +37,7 @@ namespace RegexBenchmark
                 Console.WriteLine();
                 Console.WriteLine($"================= {name} =================");
                 Console.WriteLine();
-
-                Benchmark(patternCompiler, "[a-zA-Z]+ing", fileData, repeat);
-
+                
                 Benchmark(patternCompiler, "Twain", fileData, repeat);
                 Benchmark(patternCompiler, "[a-z]shing", fileData, repeat);
                 Benchmark(patternCompiler, "Huck[a-zA-Z]+|Saw[a-zA-Z]+", fileData, repeat);

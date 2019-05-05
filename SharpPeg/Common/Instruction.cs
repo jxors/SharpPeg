@@ -185,6 +185,11 @@ namespace SharpPeg.Common
             return new Instruction(Type, Label, Offset, newData1, Data2);
         }
 
+        internal Instruction WithData2(ushort newData2)
+        {
+            return new Instruction(Type, Label, Offset, Data1, newData2);
+        }
+
         public static bool operator==(Instruction a, Instruction b)
         {
             return a.Type == b.Type 
