@@ -51,6 +51,10 @@ namespace SharpPeg.Runner.ILRunner
         private readonly FieldInfo exitPointsField = typeof(BaseJittedRunner).GetField("ExitPoints");
         private readonly FieldInfo methodsField = typeof(BaseJittedRunner).GetField("Methods");
         private readonly MethodInfo discardCapturesMethod = typeof(BaseJittedRunner).GetMethod("DiscardCaptures", BindingFlags.NonPublic | BindingFlags.Instance);
+        private readonly MethodInfo charScanNormalMethod = typeof(BaseJittedRunner).GetMethod("CharScanNormal", BindingFlags.NonPublic | BindingFlags.Instance);
+        private readonly MethodInfo charScan2NormalMethod = typeof(BaseJittedRunner).GetMethod("CharScan2Normal", BindingFlags.NonPublic | BindingFlags.Instance);
+        private readonly MethodInfo charScan3NormalMethod = typeof(BaseJittedRunner).GetMethod("CharScan3Normal", BindingFlags.NonPublic | BindingFlags.Instance);
+        private readonly MethodInfo charScan4NormalMethod = typeof(BaseJittedRunner).GetMethod("CharScan4Normal", BindingFlags.NonPublic | BindingFlags.Instance);
 
         private readonly MethodInfo restoreFullMemoize = typeof(BaseJittedRunner).GetMethod("ApplyMemoizedResult", BindingFlags.NonPublic | BindingFlags.Instance);
         private readonly MethodInfo doFullMemoize = typeof(BaseJittedRunner).GetMethod("Memoize", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -92,7 +96,7 @@ namespace SharpPeg.Runner.ILRunner
         private void BuildConstructor(ConstructorBuilder constructorBuilder)
         {
             var generator = constructorBuilder.GetILGenerator();
-            
+
             generator.BeginScope();
             generator.Emit(OpCodes.Ldarg_0);
             generator.Emit(OpCodes.Ldarg_1);
@@ -105,7 +109,7 @@ namespace SharpPeg.Runner.ILRunner
         {
             var generator = methodBuilder.GetILGenerator();
 
-            if(EmitErrorInfo)
+            if (EmitErrorInfo)
             {
                 generator.Emit(OpCodes.Ldarg_0);
                 generator.Emit(OpCodes.Ldc_I4, peg.Methods.Count);
@@ -171,7 +175,7 @@ namespace SharpPeg.Runner.ILRunner
             var variables = Enumerable.Range(0, method.VariableCount).Select(item => new Lazy<LocalBuilder>(() => DeclareLocal(generator, typeof(char*), $"var_{item}"))).ToArray();
             var countVariables = Enumerable.Range(0, method.VariableCount).Select(item => new Lazy<LocalBuilder>(() => DeclareLocal(generator, typeof(char*), $"count_{item}"))).ToArray();
             var labels = Enumerable.Range(0, method.LabelCount).Select(item => generator.DefineLabel()).ToArray();
-            
+
             var positionLocal = DeclareLocal(generator, typeof(char*), "position");
             var resultLocal = DeclareLocal(generator, typeof(UnsafePatternResult), "result");
             var currentCharLocal = new Lazy<LocalBuilder>(() => DeclareLocal(generator, typeof(char), "currentChar"));
@@ -185,7 +189,7 @@ namespace SharpPeg.Runner.ILRunner
             generator.Emit(OpCodes.Ldarg_1);
             generator.Emit(OpCodes.Stloc, positionLocal);
 
-            if(EmitErrorInfo)
+            if (EmitErrorInfo)
             {
                 generator.Emit(OpCodes.Ldarg_0);
                 generator.Emit(OpCodes.Ldfld, entryPointsField);
@@ -194,12 +198,12 @@ namespace SharpPeg.Runner.ILRunner
                 generator.Emit(OpCodes.Stelem, typeof(char*));
             }
 
-            if(EnableMemoization)
+            if (EnableMemoization)
             {
                 var noMemoizationLabel = generator.DefineLabel();
                 generator.Emit(OpCodes.Ldarg_0);
                 generator.Emit(OpCodes.Ldfld, memoizationFields[index]);
-                
+
                 // Calculate position
                 generator.Emit(OpCodes.Ldarg_1);
 
@@ -221,7 +225,7 @@ namespace SharpPeg.Runner.ILRunner
                 generator.Emit(OpCodes.Ceq);
                 generator.Emit(OpCodes.Brtrue, noMemoizationLabel);
 
-                if(EnableCaptureMemoization)
+                if (EnableCaptureMemoization)
                 {
                     generator.Emit(OpCodes.Ldarg_0);
                     generator.Emit(OpCodes.Ldc_I4, (int)index);
@@ -241,7 +245,7 @@ namespace SharpPeg.Runner.ILRunner
 
                 generator.MarkLabel(noMemoizationLabel);
 
-                if(EnableCaptureMemoization)
+                if (EnableCaptureMemoization)
                 {
                     generator.Emit(OpCodes.Ldarg_0);
                     generator.Emit(OpCodes.Ldfld, capturesField);
@@ -311,13 +315,13 @@ namespace SharpPeg.Runner.ILRunner
                             // Chain check
                             generator.Emit(OpCodes.Ldind_U2);
                             generator.Emit(OpCodes.Stloc, currentCharLocal.Value);
-                            
+
                             generator.Emit(OpCodes.Ldloc, currentCharLocal.Value);
                             EmitPushInt(generator, min);
                             generator.Emit(OpCodes.Sub);
                             EmitPushInt(generator, max - min);
                             generator.Emit(OpCodes.Bgt_Un, labels[lastLabel]);
-                            
+
                             EmitCharacterClassCheck(generator, method, true, currentCharLocal, instruction.Data1, instruction.Data2, true, labels[instruction.Label]);
                         }
                         else
@@ -344,7 +348,7 @@ namespace SharpPeg.Runner.ILRunner
                         generator.Emit(OpCodes.Beq, successLabel);
 
                         // Special failure case: jump to labels
-                        foreach(var (failureLabel, jumpTarget) in method.FailureLabelMap[instruction.Data2].Mapping)
+                        foreach (var (failureLabel, jumpTarget) in method.FailureLabelMap[instruction.Data2].Mapping)
                         {
                             generator.Emit(OpCodes.Ldloc, resultLocal);
                             generator.Emit(OpCodes.Ldfld, resultLabelField);
@@ -406,7 +410,7 @@ namespace SharpPeg.Runner.ILRunner
                         break;
                     case InstructionType.RestorePosition:
                         generator.Emit(OpCodes.Ldloc, variables[instruction.Data1].Value);
-                        if(instruction.Offset != 0)
+                        if (instruction.Offset != 0)
                         {
                             EmitPushInt(generator, instruction.Offset * sizeof(char));
                             generator.Emit(OpCodes.Add);
@@ -463,13 +467,66 @@ namespace SharpPeg.Runner.ILRunner
                         break;
                     case InstructionType.MarkLabel:
                         generator.MarkLabel(labels[instruction.Label]);
+                        var info = DetectCharScan(method, i);
+                        if (info != null)
+                        {
+                            generator.Emit(OpCodes.Ldarg_0);
+                            generator.Emit(OpCodes.Ldloc, positionLocal);
+                            if (info.StartOffset != 0)
+                            {
+                                EmitPushInt(generator, info.StartOffset * 2);
+                                generator.Emit(OpCodes.Add);
+                            }
+
+                            generator.Emit(OpCodes.Ldarg_0);
+                            generator.Emit(OpCodes.Ldfld, dataEndPtrField);
+                            if(info.Bounds != 0)
+                            {
+                                EmitPushInt(generator, info.Bounds * 2);
+                                generator.Emit(OpCodes.Sub);
+                            }
+
+                            foreach (var c in info.SearchFor)
+                            {
+                                // TODO: Pre-generate mask
+                                EmitPushInt(generator, c);
+                            }
+
+                            if (info.SearchFor.Count == 1)
+                            {
+                                generator.EmitCall(OpCodes.Call, charScanNormalMethod, null);
+                            }
+                            else if (info.SearchFor.Count == 2)
+                            {
+                                generator.EmitCall(OpCodes.Call, charScan2NormalMethod, null);
+                            }
+                            else if (info.SearchFor.Count == 3)
+                            {
+                                generator.EmitCall(OpCodes.Call, charScan3NormalMethod, null);
+                            }
+                            else if (info.SearchFor.Count == 4)
+                            {
+                                generator.EmitCall(OpCodes.Call, charScan4NormalMethod, null);
+                            }
+                            else
+                            {
+                                throw new NotSupportedException();
+                            }
+
+                            if (info.StartOffset != 0)
+                            {
+                                EmitPushInt(generator, info.StartOffset * 2);
+                                generator.Emit(OpCodes.Sub);
+                            }
+                            generator.Emit(OpCodes.Stloc, positionLocal);
+                        }
                         break;
                     default:
                         throw new ArgumentException($"Unrecognised instruction type: {instruction.Type}");
                 }
             }
 
-            if(EnableMemoization)
+            if (EnableMemoization)
             {
                 generator.MarkLabel(memoizeReturnValueLabel.Value);
                 generator.Emit(OpCodes.Ldloc, resultLocal);
@@ -512,7 +569,7 @@ namespace SharpPeg.Runner.ILRunner
                 generator.Emit(OpCodes.Ldloc, resultLocal);
                 generator.Emit(OpCodes.Ret);
             }
-            
+
             generator.EndScope();
         }
 
@@ -596,6 +653,116 @@ namespace SharpPeg.Runner.ILRunner
                     break;
                 }
             }
+        }
+
+        private CharScanInfo DetectCharScan(Method method, int startPos)
+        {
+            var instructions = method.Instructions;
+            var pos = startPos;
+            if (instructions[pos].Matches(InstructionType.MarkLabel, out var label))
+            {
+                var loopInstructions = new List<Instruction>();
+                var loops = false;
+                var hasHadBoundsCheck = false;
+                for (var j = 0; j < 8; j++)
+                {
+                    var instr = instructions[pos];
+                    loopInstructions.Add(instructions[pos]);
+
+                    if (instr.Matches(InstructionType.Return))
+                    {
+                        return null;
+                    }
+
+                    if(instr.Matches(InstructionType.BoundsCheck))
+                    {
+                        hasHadBoundsCheck = true;
+                    }else if((instr.Matches(InstructionType.Char) || instr.Matches(InstructionType.Advance)) && !hasHadBoundsCheck)
+                    {
+                        return null;
+                    }
+
+                    if (!instr.Matches(InstructionType.BoundsCheck)
+                        && instr.CanJumpToLabel)
+                    {
+                        pos = GetLabelPosition(instructions, instr.Label);
+                    }
+                    else
+                    {
+                        pos += 1;
+                    }
+
+                    if (pos == startPos)
+                    {
+                        loops = true;
+                        break;
+                    }
+                }
+
+                if(!loops)
+                {
+                    return null;
+                }
+
+                if (!loopInstructions.All(instr =>
+                      (instr.Type == InstructionType.Advance && instr.Offset == 1)
+                      || instr.Type == InstructionType.Char
+                      || instr.Type == InstructionType.Jump
+                      || instr.Type == InstructionType.BoundsCheck
+                      || instr.Type == InstructionType.MarkLabel))
+                {
+                    return null;
+                }
+
+                if (loopInstructions.Count(instr => instr.Type == InstructionType.Advance) != 1)
+                {
+                    return null;
+                }
+
+                var charRanges = loopInstructions
+                    .Where(instr => instr.Type == InstructionType.Char)
+                    .SelectMany(instr => method.CharacterRanges.Skip(instr.Data1).Take(instr.Data2 - instr.Data1))
+                    .ToList();
+
+                // TODO: Check if we can generate an efficient matching mask (i.e. some bits that are equal in all of the characters)
+                if(charRanges.Sum(range => range.Max - range.Min + 1) > 4)
+                {
+                    return null;
+                }
+
+                // Additional conditions for now that are not really needed:
+                var lookupOffset = loopInstructions.First(item => item.Type == InstructionType.Char).Offset;
+                if(!loopInstructions.All(instr => (instr.Type != InstructionType.Char || instr.Offset == lookupOffset)))
+                {
+                    return null;
+                }
+
+                var bounds = 0;
+                var advanced = 0;
+                foreach(var instr in loopInstructions)
+                {
+                    if(instr.Matches(InstructionType.BoundsCheck, out var _, out var offset) && offset + advanced > bounds)
+                    {
+                        bounds = offset + advanced;
+                    } else if(instr.Matches(InstructionType.Advance, out var _, out var advanceOffset))
+                    {
+                        advanced += advanceOffset;
+                    }
+                }
+
+                var chars = new List<char>();
+                foreach(var range in charRanges)
+                {
+                    for (var i = range.Min; i <= range.Max; i++)
+                    {
+                        chars.Add(i);
+                    }
+                }
+
+                return new CharScanInfo(bounds, lookupOffset, chars);
+            }
+
+            return null;
         }
 
         private List<Instruction> FindChainAt(IReadOnlyList<Instruction> instructions, Method method, short offset, int i, out char min, out char max, out ushort lastLabel, out int coverage)

@@ -34,6 +34,7 @@
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DebugSymbols>true</DebugSymbols>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Publish|AnyCPU'">
     <OutputPath>bin\Publish\</OutputPath>
@@ -112,6 +113,11 @@
       <Project>{CB6D6CDC-AAE8-445A-8A85-6F77F528D59E}</Project>
       <Name>RegexToPeg</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="mark.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

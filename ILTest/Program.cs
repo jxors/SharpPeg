@@ -9,6 +9,8 @@ using SharpPeg.Compilation;
 using SharpPeg.Optimizations;
 using SharpPeg.Runner.ILRunner;
 using SharpPeg.Runner;
+using System.IO;
+using System.Runtime.InteropServices;
 
 namespace ILTest
 {
@@ -21,6 +23,8 @@ namespace ILTest
 
         static void Main(string[] args)
         {
+            TestCompare();
+            //BenchmarkStringSearch();
             //{
             //    var jitter = new CustomJitter("Regex.dll");
             //    var rg = new RegexGrammar(new PatternCompiler(new Compiler(), new DefaultOptimizer(), jitter));
@@ -72,7 +76,10 @@ namespace ILTest
             //var p1 = new Pattern { Data = new Sequence(ws, CharacterClass.String("abc")) };
             //var p2 = new Pattern { Data = new Sequence(ws, CharacterClass.String("xyz")) };
             //var p = new PrioritizedChoice(p1, p2);
-            var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, converter.Convert(regexGrammar.Value.ParseExpression("([A-Za-z]awyer|[A-Za-z]inn)\\s"))), new Any()));
+            //var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, converter.Convert(regexGrammar.Value.ParseExpression("([A-Za-z]awyer|[A-Za-z]inn)\\s"))), new Any()));
+            //var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, converter.Convert(regexGrammar.Value.ParseExpression("Twain"))), new Any()));
+            //var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, converter.Convert(regexGrammar.Value.ParseExpression("[a-z]shing"))), new Any()));
+            var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, converter.Convert(regexGrammar.Value.ParseExpression("[a-zA-Z]+ing"))), new Any()));
 
             var s2 = new Stopwatch();
             s2.Start();
@@ -166,6 +173,235 @@ namespace ILTest
 
             return runner;
         }
+
+        static void BenchmarkStringSearch()
+        {
+            var data = File.ReadAllText("mark.txt").ToCharArray();
+            var s = new Stopwatch();
+            s.Restart();
+            var f1 = FindNormal(data);
+            s.Stop();
+            Console.WriteLine($"Normal took {s.ElapsedMilliseconds}");
+
+            s.Restart();
+            var f2 = FindBoyerMoore(data);
+            s.Stop();
+            Console.WriteLine($"Boyer-Moore took {s.ElapsedMilliseconds}");
+
+            s.Restart();
+            var f3 = FindWithMask(data);
+            s.Stop();
+            Console.WriteLine($"Masked took {s.ElapsedMilliseconds}");
+            Console.WriteLine($"Findings: {f1} vs {f2} vs {f3}");
+            Console.ReadLine();
+        }
+
+        static int FindNormal(char[] data)
+        {
+            var found = 0;
+            for (var i = 0; i < 25; i++)
+            {
+                var pos = 0;
+                var end = data.Length - 5;
+                while (pos < end)
+                {
+                    if (data[pos] == 'T'
+                        && data[pos + 1] == 'w'
+                        && data[pos + 2] == 'a'
+                        && data[pos + 3] == 'i'
+                        && data[pos + 4] == 'n')
+                    {
+                        found++;
+                        pos += 5;
+                    }
+                    else
+                    {
+                        pos++;
+                    }
+                }
+            }
+
+            return found;
+        }
+
+        static int FindBoyerMoore(char[] data)
+        {
+            var found = 0;
+            for (var i = 0; i < 25; i++)
+            {
+                var pos = 4;
+                while (pos < data.Length)
+                {
+                    switch(data[pos])
+                    {
+                        case 'T':
+                            pos += 4;
+                            break;
+                        case 'w':
+                            pos += 3;
+                            break;
+                        case 'a':
+                            pos += 2;
+                            break;
+                        case 'n':
+                            if (data[pos - 4] == 'T'
+                                && data[pos - 3] == 'w'
+                                && data[pos - 2] == 'a'
+                                && data[pos - 1] == 'i')
+                            {
+                                found++;
+                            }
+
+                            pos += 1;
+                            break;
+                        default:
+                            pos += 1;
+                            break;
+                    }
+                }
+            }
+
+            return found;
+        }
+
+        static unsafe int FindWithMask(char[] data)
+        {
+            var searchFor = 'T';
+            var mask = searchFor | ((ulong)searchFor << 16) | ((ulong)searchFor << 32) | ((ulong)searchFor << 48);
+            fixed (char* unsafeData = data)
+            {
+                var found = 0;
+                for (var i = 0; i < 25; i++)
+                {
+                    var ptr = unsafeData;
+                    var end = unsafeData + data.Length - 5;
+                    while (ptr < end)
+                    {
+                        while (ptr < end)
+                        {
+                            var line = *(ulong*)ptr;
+                            var x = ~(line ^ mask);
+                            var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
+                            var t1 = (x & 0x8000800080008000LU);
+                            var zeroes = t0 & t1;
+                            if(zeroes != 0)
+                            {
+                                break;
+                            }
+                            else
+                            {
+                                ptr += 4;
+                            }
+                        }
+
+                        if (*ptr == 'T'
+                            && *(ptr + 1) == 'w'
+                            && *(ptr + 2) == 'a'
+                            && *(ptr + 3) == 'i'
+                            && *(ptr + 4) == 'n')
+                        {
+                            found++;
+                            ptr += 5;
+                        }
+                        else
+                        {
+                            ptr++;
+                        }
+                    }
+                }
+
+                return found;
+            }
+        }
+
+        static void TestCompare()
+        {
+            for(var i = 0; i <= 0xff; i++)
+            {
+                for(var j = 0; j <= 0xff; j++)
+                {
+                    var expected = i > j;
+                    var x0 = ((i >> 1) | 0x80) - (((j + 1) >> 1));
+
+                    var q = ~(i ^ j);
+                    var t0 = (q & 0x7f) + 0x01;
+                    var t1 = (q & 0x80);
+                    var x1 = t0 & t1;
+
+                    var actual = ((x0 & ~x1) & 0x80) != 0;
+
+                    if(expected != actual)
+                    {
+                        Console.WriteLine($"Doesn't work for {i} > {j}: expected {expected} but got {actual}");
+                    }
+                }
+            }
+        }
+        /*
+         * C++ version:
+         * This doesn't work, because there's a massive P/Invoke overhead
+        const __m256i first = _mm256_set1_epi16(toFind);
+
+	    while(ptr < end)
+	    {
+		    const __m256i block_first = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(ptr));
+		    const __m256i eq_first = _mm256_cmpeq_epi8(first, block_first);
+
+		    uint32_t mask = _mm256_movemask_epi8(eq_first);
+
+		    while (mask != 0)
+		    {
+			    if ((mask & 1) != 0)
+			    {
+				    return ptr;
+			    }
+
+			    ptr += 1;
+			    mask >>= 1;
+		    }
+
+		    ptr += 8;
+	    }
+
+	    return end;
+
+        [DllImport("../../../Release/SimdSearch.dll", EntryPoint = "findNextChar", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
+        static unsafe extern IntPtr FindNextChar(IntPtr ptr, IntPtr end, char toFind);
+
+        static unsafe int FindWithAvx256(char[] data)
+        {
+            var searchFor = 'T';
+            fixed (char* unsafeData = data)
+            {
+                var found = 0;
+                for (var i = 0; i < 25; i++)
+                {
+                    var ptr = unsafeData;
+                    var end = unsafeData + data.Length - 5;
+                    while (ptr < end)
+                    {
+                        ptr = (char*)FindNextChar((IntPtr)ptr, (IntPtr)end, searchFor);
+
+                        if (*ptr == 'T'
+                            && *(ptr + 1) == 'w'
+                            && *(ptr + 2) == 'a'
+                            && *(ptr + 3) == 'i'
+                            && *(ptr + 4) == 'n')
+                        {
+                            found++;
+                            ptr += 5;
+                        }
+                        else
+                        {
+                            ptr++;
+                        }
+                    }
+                }
+
+                return found;
+            }
+        }
+        */
 
 #if DEBUG
         private unsafe static char Test(char* pointer)
