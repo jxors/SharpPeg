@@ -47,8 +47,8 @@ namespace RegexBenchmark
                 Benchmark(patternCompiler, ".{2,4}(Tom|Sawyer|Huckleberry|Finn)", fileData, repeat);
                 Benchmark(patternCompiler, "Tom.{10,25}river|river.{10,25}Tom", fileData, repeat);
                 Benchmark(patternCompiler, "[a-zA-Z]+ing", fileData, repeat);
-                Benchmark(patternCompiler, "\\s[a-zA-Z]{0,12}ing\\s", fileData, repeat);
                 Benchmark(patternCompiler, "([A-Za-z]awyer|[A-Za-z]inn)\\s", fileData, repeat);
+                Benchmark(patternCompiler, "\\s[a-zA-Z]{0,12}ing\\s", fileData, repeat);
                 Benchmark(patternCompiler, "[\"'][^\"']{0,30}[?!\\.][\"']", fileData, repeat);
 
             }

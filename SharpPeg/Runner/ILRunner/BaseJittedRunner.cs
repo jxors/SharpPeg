@@ -7,6 +7,10 @@ using SharpPeg.Operators;
 using System.Linq;
 using SharpPeg.Common;
 using System.Runtime.CompilerServices;
+#if NET_CORE_30
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
+#endif
 
 namespace SharpPeg.Runner.ILRunner
 {
@@ -40,23 +44,48 @@ namespace SharpPeg.Runner.ILRunner
                 return startPos;
             }
 
-            var mask = ~(searchFor | ((ulong)searchFor << 16) | ((ulong)searchFor << 32) | ((ulong)searchFor << 48));
-            var pos = startPos;
-            while (pos < endPos)
+#if NET_CORE_30
+            if (Avx.IsSupported)
             {
-                var line = *(ulong*)pos;
-                var x = (line ^ mask);
-                var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
-                var t1 = (x & 0x8000800080008000LU);
-                var zeroes = t0 & t1;
-                if (zeroes != 0)
+                var pos = startPos;
+                var mask = Vector256.Create(searchFor);
+                while (pos < endPos)
                 {
-                    while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
-                    return pos;
+                    var other = Avx2.LoadVector256((byte*)pos).As<byte, ushort>();
+                    var result = Avx2.CompareEqual(mask, other);
+                    var resultMask = Avx2.MoveMask(result.As<ushort, byte>());
+                    if (resultMask != 0)
+                    {
+                        while((resultMask & 1) == 0) { pos++; resultMask >>= 1; }
+                        return pos;
+                    }
+                    else
+                    {
+                        pos += 16;
+                    }
                 }
-                else
+            }
+            else
+#endif
+            {
+                var mask = ~(searchFor | ((ulong)searchFor << 16) | ((ulong)searchFor << 32) | ((ulong)searchFor << 48));
+                var pos = startPos;
+                while (pos < endPos)
                 {
-                    pos += 4;
+                    var line = *(ulong*)pos;
+                    var x = (line ^ mask);
+                    var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
+                    var t1 = (x & 0x8000800080008000LU);
+                    var zeroes = t0 & t1;
+                    if (zeroes != 0)
+                    {
+                        while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
+                        return pos;
+                    }
+                    else
+                    {
+                        pos += 4;
+                    }
                 }
             }
 
@@ -71,37 +100,67 @@ namespace SharpPeg.Runner.ILRunner
                 return startPos;
             }
 
-            var mask1 = ~(searchFor1 | ((ulong)searchFor1 << 16) | ((ulong)searchFor1 << 32) | ((ulong)searchFor1 << 48));
-            var mask2 = ~(searchFor2 | ((ulong)searchFor2 << 16) | ((ulong)searchFor2 << 32) | ((ulong)searchFor2 << 48));
-            var pos = startPos;
-            while (pos < endPos)
+
+#if NET_CORE_30
+            if (Avx.IsSupported)
             {
-                var line = *(ulong*)pos;
+                var pos = startPos;
+                var mask1 = Vector256.Create(searchFor1);
+                var mask2 = Vector256.Create(searchFor2);
+                while (pos < endPos)
                 {
-                    var x = (line ^ mask1);
-                    var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
-                    var t1 = (x & 0x8000800080008000LU);
-                    var zeroes = t0 & t1;
-                    if (zeroes != 0)
+                    var other = Avx2.LoadVector256((byte*)pos).As<byte, ushort>();
+                    var result1 = Avx2.CompareEqual(mask1, other);
+                    var resultMask1 = Avx2.MoveMask(result1.As<ushort, byte>());
+                    var result2 = Avx2.CompareEqual(mask2, other);
+                    var resultMask2 = Avx2.MoveMask(result2.As<ushort, byte>());
+                    var resultMask = resultMask1 | resultMask2;
+                    if (resultMask != 0)
                     {
-                        while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
+                        while((resultMask & 1) == 0) { pos++; resultMask >>= 1; }
                         return pos;
                     }
-                }
-
-                {
-                    var x = (line ^ mask2);
-                    var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
-                    var t1 = (x & 0x8000800080008000LU);
-                    var zeroes = t0 & t1;
-                    if (zeroes != 0)
+                    else
                     {
-                        while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
-                        return pos;
+                        pos += 16;
                     }
                 }
+            }
+            else
+#endif
+            {
+                var mask1 = ~(searchFor1 | ((ulong)searchFor1 << 16) | ((ulong)searchFor1 << 32) | ((ulong)searchFor1 << 48));
+                var mask2 = ~(searchFor2 | ((ulong)searchFor2 << 16) | ((ulong)searchFor2 << 32) | ((ulong)searchFor2 << 48));
+                var pos = startPos;
+                while (pos < endPos)
+                {
+                    var line = *(ulong*)pos;
+                    {
+                        var x = (line ^ mask1);
+                        var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
+                        var t1 = (x & 0x8000800080008000LU);
+                        var zeroes = t0 & t1;
+                        if (zeroes != 0)
+                        {
+                            while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
+                            return pos;
+                        }
+                    }
 
-                pos += 4;
+                    {
+                        var x = (line ^ mask2);
+                        var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
+                        var t1 = (x & 0x8000800080008000LU);
+                        var zeroes = t0 & t1;
+                        if (zeroes != 0)
+                        {
+                            while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
+                            return pos;
+                        }
+                    }
+
+                    pos += 4;
+                }
             }
 
             return endPos;
@@ -115,49 +174,82 @@ namespace SharpPeg.Runner.ILRunner
                 return startPos;
             }
 
-            var mask1 = ~(searchFor1 | ((ulong)searchFor1 << 16) | ((ulong)searchFor1 << 32) | ((ulong)searchFor1 << 48));
-            var mask2 = ~(searchFor2 | ((ulong)searchFor2 << 16) | ((ulong)searchFor2 << 32) | ((ulong)searchFor2 << 48));
-            var mask3 = ~(searchFor3 | ((ulong)searchFor3 << 16) | ((ulong)searchFor3 << 32) | ((ulong)searchFor3 << 48));
-            var pos = startPos;
-            while (pos < endPos)
+
+#if NET_CORE_30
+            if (Avx.IsSupported)
             {
-                var line = *(ulong*)pos;
+                var pos = startPos;
+                var mask1 = Vector256.Create(searchFor1);
+                var mask2 = Vector256.Create(searchFor2);
+                var mask3 = Vector256.Create(searchFor3);
+                while (pos < endPos)
                 {
-                    var x = (line ^ mask1);
-                    var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
-                    var t1 = (x & 0x8000800080008000LU);
-                    var zeroes = t0 & t1;
-                    if (zeroes != 0)
+                    var other = Avx2.LoadVector256((byte*)pos).As<byte, ushort>();
+                    var result1 = Avx2.CompareEqual(mask1, other);
+                    var resultMask1 = Avx2.MoveMask(result1.As<ushort, byte>());
+                    var result2 = Avx2.CompareEqual(mask2, other);
+                    var resultMask2 = Avx2.MoveMask(result2.As<ushort, byte>());
+                    var result3 = Avx2.CompareEqual(mask3, other);
+                    var resultMask3 = Avx2.MoveMask(result3.As<ushort, byte>());
+                    var resultMask = resultMask1 | resultMask2 | resultMask3;
+                    if (resultMask != 0)
                     {
-                        while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
+                        while ((resultMask & 1) == 0) { pos++; resultMask >>= 1; }
                         return pos;
                     }
-                }
-
-                {
-                    var x = (line ^ mask2);
-                    var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
-                    var t1 = (x & 0x8000800080008000LU);
-                    var zeroes = t0 & t1;
-                    if (zeroes != 0)
+                    else
                     {
-                        return pos;
+                        pos += 16;
                     }
                 }
-
+            }
+            else
+#endif
+            {
+                var mask1 = ~(searchFor1 | ((ulong)searchFor1 << 16) | ((ulong)searchFor1 << 32) | ((ulong)searchFor1 << 48));
+                var mask2 = ~(searchFor2 | ((ulong)searchFor2 << 16) | ((ulong)searchFor2 << 32) | ((ulong)searchFor2 << 48));
+                var mask3 = ~(searchFor3 | ((ulong)searchFor3 << 16) | ((ulong)searchFor3 << 32) | ((ulong)searchFor3 << 48));
+                var pos = startPos;
+                while (pos < endPos)
                 {
-                    var x = (line ^ mask3);
-                    var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
-                    var t1 = (x & 0x8000800080008000LU);
-                    var zeroes = t0 & t1;
-                    if (zeroes != 0)
+                    var line = *(ulong*)pos;
                     {
-                        while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
-                        return pos;
+                        var x = (line ^ mask1);
+                        var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
+                        var t1 = (x & 0x8000800080008000LU);
+                        var zeroes = t0 & t1;
+                        if (zeroes != 0)
+                        {
+                            while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
+                            return pos;
+                        }
                     }
-                }
 
-                pos += 4;
+                    {
+                        var x = (line ^ mask2);
+                        var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
+                        var t1 = (x & 0x8000800080008000LU);
+                        var zeroes = t0 & t1;
+                        if (zeroes != 0)
+                        {
+                            return pos;
+                        }
+                    }
+
+                    {
+                        var x = (line ^ mask3);
+                        var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
+                        var t1 = (x & 0x8000800080008000LU);
+                        var zeroes = t0 & t1;
+                        if (zeroes != 0)
+                        {
+                            while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
+                            return pos;
+                        }
+                    }
+
+                    pos += 4;
+                }
             }
 
             return endPos;
@@ -171,63 +263,99 @@ namespace SharpPeg.Runner.ILRunner
                 return startPos;
             }
 
-            var mask1 = ~(searchFor1 | ((ulong)searchFor1 << 16) | ((ulong)searchFor1 << 32) | ((ulong)searchFor1 << 48));
-            var mask2 = ~(searchFor2 | ((ulong)searchFor2 << 16) | ((ulong)searchFor2 << 32) | ((ulong)searchFor2 << 48));
-            var mask3 = ~(searchFor3 | ((ulong)searchFor3 << 16) | ((ulong)searchFor3 << 32) | ((ulong)searchFor3 << 48));
-            var mask4 = ~(searchFor4 | ((ulong)searchFor4 << 16) | ((ulong)searchFor4 << 32) | ((ulong)searchFor4 << 48));
-            var pos = startPos;
-            while (pos < endPos)
+
+#if NET_CORE_30
+            if (Avx.IsSupported)
             {
-                var line = *(ulong*)pos;
+                var pos = startPos;
+                var mask1 = Vector256.Create(searchFor1);
+                var mask2 = Vector256.Create(searchFor2);
+                var mask3 = Vector256.Create(searchFor3);
+                var mask4 = Vector256.Create(searchFor4);
+                while (pos < endPos)
                 {
-                    var x = (line ^ mask1);
-                    var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
-                    var t1 = (x & 0x8000800080008000LU);
-                    var zeroes = t0 & t1;
-                    if (zeroes != 0)
+                    var other = Avx2.LoadVector256((byte*)pos).As<byte, ushort>();
+                    var result1 = Avx2.CompareEqual(mask1, other);
+                    var resultMask1 = Avx2.MoveMask(result1.As<ushort, byte>());
+                    var result2 = Avx2.CompareEqual(mask2, other);
+                    var resultMask2 = Avx2.MoveMask(result2.As<ushort, byte>());
+                    var result3 = Avx2.CompareEqual(mask3, other);
+                    var resultMask3 = Avx2.MoveMask(result3.As<ushort, byte>());
+                    var result4 = Avx2.CompareEqual(mask4, other);
+                    var resultMask4 = Avx2.MoveMask(result4.As<ushort, byte>());
+                    var resultMask = resultMask1 | resultMask2 | resultMask3 | resultMask4;
+                    if (resultMask != 0)
                     {
-                        while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
+                        while ((resultMask & 1) == 0) { pos++; resultMask >>= 1; }
                         return pos;
                     }
-                }
-
-                {
-                    var x = (line ^ mask2);
-                    var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
-                    var t1 = (x & 0x8000800080008000LU);
-                    var zeroes = t0 & t1;
-                    if (zeroes != 0)
+                    else
                     {
-                        while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
-                        return pos;
+                        pos += 16;
                     }
                 }
-
+            }
+            else
+#endif
+            {
+                var mask1 = ~(searchFor1 | ((ulong)searchFor1 << 16) | ((ulong)searchFor1 << 32) | ((ulong)searchFor1 << 48));
+                var mask2 = ~(searchFor2 | ((ulong)searchFor2 << 16) | ((ulong)searchFor2 << 32) | ((ulong)searchFor2 << 48));
+                var mask3 = ~(searchFor3 | ((ulong)searchFor3 << 16) | ((ulong)searchFor3 << 32) | ((ulong)searchFor3 << 48));
+                var mask4 = ~(searchFor4 | ((ulong)searchFor4 << 16) | ((ulong)searchFor4 << 32) | ((ulong)searchFor4 << 48));
+                var pos = startPos;
+                while (pos < endPos)
                 {
-                    var x = (line ^ mask3);
-                    var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
-                    var t1 = (x & 0x8000800080008000LU);
-                    var zeroes = t0 & t1;
-                    if (zeroes != 0)
+                    var line = *(ulong*)pos;
                     {
-                        while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
-                        return pos;
+                        var x = (line ^ mask1);
+                        var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
+                        var t1 = (x & 0x8000800080008000LU);
+                        var zeroes = t0 & t1;
+                        if (zeroes != 0)
+                        {
+                            while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
+                            return pos;
+                        }
                     }
-                }
 
-                {
-                    var x = (line ^ mask4);
-                    var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
-                    var t1 = (x & 0x8000800080008000LU);
-                    var zeroes = t0 & t1;
-                    if (zeroes != 0)
                     {
-                        while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
-                        return pos;
+                        var x = (line ^ mask2);
+                        var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
+                        var t1 = (x & 0x8000800080008000LU);
+                        var zeroes = t0 & t1;
+                        if (zeroes != 0)
+                        {
+                            while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
+                            return pos;
+                        }
                     }
-                }
 
-                pos += 4;
+                    {
+                        var x = (line ^ mask3);
+                        var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
+                        var t1 = (x & 0x8000800080008000LU);
+                        var zeroes = t0 & t1;
+                        if (zeroes != 0)
+                        {
+                            while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
+                            return pos;
+                        }
+                    }
+
+                    {
+                        var x = (line ^ mask4);
+                        var t0 = (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU;
+                        var t1 = (x & 0x8000800080008000LU);
+                        var zeroes = t0 & t1;
+                        if (zeroes != 0)
+                        {
+                            while ((ushort)zeroes == 0) { pos++; zeroes >>= 16; }
+                            return pos;
+                        }
+                    }
+
+                    pos += 4;
+                }
             }
 
             return endPos;

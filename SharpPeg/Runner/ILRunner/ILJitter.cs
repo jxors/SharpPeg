@@ -664,7 +664,7 @@ namespace SharpPeg.Runner.ILRunner
                 var loopInstructions = new List<Instruction>();
                 var loops = false;
                 var hasHadBoundsCheck = false;
-                for (var j = 0; j < 8; j++)
+                for (var j = 0; j < 16; j++)
                 {
                     var instr = instructions[pos];
                     loopInstructions.Add(instructions[pos]);
@@ -757,6 +757,11 @@ namespace SharpPeg.Runner.ILRunner
                     {
                         chars.Add(i);
                     }
+                }
+
+                if (chars.Count > 4)
+                {
+                    return null;
                 }
 
                 return new CharScanInfo(bounds, lookupOffset, chars);
