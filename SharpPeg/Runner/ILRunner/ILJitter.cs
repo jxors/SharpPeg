@@ -470,13 +470,16 @@ namespace SharpPeg.Runner.ILRunner
                         var info = DetectCharScan(method, i);
                         if (info != null)
                         {
-                            generator.Emit(OpCodes.Ldarg_0);
+                            var tempPosition = generator.DeclareLocal(typeof(char*));
+                            var tempEndPosition = generator.DeclareLocal(typeof(char*));
+
                             generator.Emit(OpCodes.Ldloc, positionLocal);
                             if (info.StartOffset != 0)
                             {
                                 EmitPushInt(generator, info.StartOffset * 2);
                                 generator.Emit(OpCodes.Add);
                             }
+                            generator.Emit(OpCodes.Stloc, tempPosition);
 
                             generator.Emit(OpCodes.Ldarg_0);
                             generator.Emit(OpCodes.Ldfld, dataEndPtrField);
@@ -485,34 +488,38 @@ namespace SharpPeg.Runner.ILRunner
                                 EmitPushInt(generator, info.Bounds * 2);
                                 generator.Emit(OpCodes.Sub);
                             }
+                            generator.Emit(OpCodes.Stloc, tempEndPosition);
 
-                            foreach (var c in info.SearchFor)
-                            {
-                                // TODO: Pre-generate mask
-                                EmitPushInt(generator, c);
-                            }
+                            //foreach (var c in info.SearchFor)
+                            //{
+                            //    // TODO: Pre-generate mask
+                            //    EmitPushInt(generator, c);
+                            //}
 
-                            if (info.SearchFor.Count == 1)
-                            {
-                                generator.EmitCall(OpCodes.Call, charScanNormalMethod, null);
-                            }
-                            else if (info.SearchFor.Count == 2)
-                            {
-                                generator.EmitCall(OpCodes.Call, charScan2NormalMethod, null);
-                            }
-                            else if (info.SearchFor.Count == 3)
-                            {
-                                generator.EmitCall(OpCodes.Call, charScan3NormalMethod, null);
-                            }
-                            else if (info.SearchFor.Count == 4)
-                            {
-                                generator.EmitCall(OpCodes.Call, charScan4NormalMethod, null);
-                            }
-                            else
-                            {
-                                throw new NotSupportedException();
-                            }
+                            //if (info.SearchFor.Count == 1)
+                            //{
+                            //    generator.EmitCall(OpCodes.Call, charScanNormalMethod, null);
+                            //}
+                            //else if (info.SearchFor.Count == 2)
+                            //{
+                            //    generator.EmitCall(OpCodes.Call, charScan2NormalMethod, null);
+                            //}
+                            //else if (info.SearchFor.Count == 3)
+                            //{
+                            //    generator.EmitCall(OpCodes.Call, charScan3NormalMethod, null);
+                            //}
+                            //else if (info.SearchFor.Count == 4)
+                            //{
+                            //    generator.EmitCall(OpCodes.Call, charScan4NormalMethod, null);
+                            //}
+                            //else
+                            //{
+                            //    throw new NotSupportedException();
+                            //}
 
+                            info.Emit(generator, tempPosition, tempEndPosition);
+
+                            generator.Emit(OpCodes.Ldloc, tempPosition);
                             if (info.StartOffset != 0)
                             {
                                 EmitPushInt(generator, info.StartOffset * 2);
@@ -759,7 +766,7 @@ namespace SharpPeg.Runner.ILRunner
                     }
                 }
 
-                if (chars.Count > 4)
+                if (chars.Count > 8)
                 {
                     return null;
                 }

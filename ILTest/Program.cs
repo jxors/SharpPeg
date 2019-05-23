@@ -79,7 +79,8 @@ namespace ILTest
             //var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, converter.Convert(regexGrammar.Value.ParseExpression("([A-Za-z]awyer|[A-Za-z]inn)\\s"))), new Any()));
             //var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, converter.Convert(regexGrammar.Value.ParseExpression("Twain"))), new Any()));
             //var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, converter.Convert(regexGrammar.Value.ParseExpression("[a-z]shing"))), new Any()));
-            var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, converter.Convert(regexGrammar.Value.ParseExpression("[a-zA-Z]+ing"))), new Any()));
+            //var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, converter.Convert(regexGrammar.Value.ParseExpression("[a-zA-Z]+ing"))), new Any()));
+            var p = new ZeroOrMore(new PrioritizedChoice(new CaptureGroup(0, converter.Convert(regexGrammar.Value.ParseExpression("Twain"))), new Any()));
 
             var s2 = new Stopwatch();
             s2.Start();
