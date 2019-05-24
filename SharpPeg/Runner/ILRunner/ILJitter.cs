@@ -474,20 +474,20 @@ namespace SharpPeg.Runner.ILRunner
                             var tempEndPosition = generator.DeclareLocal(typeof(char*));
 
                             generator.Emit(OpCodes.Ldloc, positionLocal);
-                            if (info.StartOffset != 0)
-                            {
-                                EmitPushInt(generator, info.StartOffset * 2);
-                                generator.Emit(OpCodes.Add);
-                            }
+                            //if (info.StartOffset != 0)
+                            //{
+                            //    EmitPushInt(generator, info.StartOffset * 2);
+                            //    generator.Emit(OpCodes.Add);
+                            //}
                             generator.Emit(OpCodes.Stloc, tempPosition);
 
                             generator.Emit(OpCodes.Ldarg_0);
                             generator.Emit(OpCodes.Ldfld, dataEndPtrField);
-                            if(info.Bounds != 0)
-                            {
-                                EmitPushInt(generator, info.Bounds * 2);
-                                generator.Emit(OpCodes.Sub);
-                            }
+                            //if(info.Bounds != 0)
+                            //{
+                            //    EmitPushInt(generator, info.Bounds * 2);
+                            //    generator.Emit(OpCodes.Sub);
+                            //}
                             generator.Emit(OpCodes.Stloc, tempEndPosition);
 
                             //foreach (var c in info.SearchFor)
@@ -520,11 +520,11 @@ namespace SharpPeg.Runner.ILRunner
                             info.Emit(generator, tempPosition, tempEndPosition);
 
                             generator.Emit(OpCodes.Ldloc, tempPosition);
-                            if (info.StartOffset != 0)
-                            {
-                                EmitPushInt(generator, info.StartOffset * 2);
-                                generator.Emit(OpCodes.Sub);
-                            }
+                            //if (info.StartOffset != 0)
+                            //{
+                            //    EmitPushInt(generator, info.StartOffset * 2);
+                            //    generator.Emit(OpCodes.Sub);
+                            //}
                             generator.Emit(OpCodes.Stloc, positionLocal);
                         }
                         break;
@@ -669,6 +669,7 @@ namespace SharpPeg.Runner.ILRunner
             if (instructions[pos].Matches(InstructionType.MarkLabel, out var label))
             {
                 var loopInstructions = new List<Instruction>();
+                var charRanges = new List<List<Instruction>>();
                 var loops = false;
                 var hasHadBoundsCheck = false;
                 for (var j = 0; j < 16; j++)
@@ -687,6 +688,23 @@ namespace SharpPeg.Runner.ILRunner
                     }else if((instr.Matches(InstructionType.Char) || instr.Matches(InstructionType.Advance)) && !hasHadBoundsCheck)
                     {
                         return null;
+                    }
+
+                    if (instr.Matches(InstructionType.Char, out var mainCharLabel))
+                    {
+                        var list = new List<Instruction>();
+
+                        for(var k = pos; k < pos + 32 
+                            && instructions[k].Matches(InstructionType.Char, out var charLabel)
+                            && (charLabel == mainCharLabel || LabelIsReachedWithoutNonTrivials(instructions, GetLabelPosition(instructions, charLabel), label)); k++)
+                        {
+                            if (instructions[k].Data2 - instructions[k].Data1 <= 1 && method.CharacterRanges[instructions[k].Data1].Count <= 10)
+                            {
+                                list.Add(instructions[k]);
+                            }
+                        }
+
+                        charRanges.Add(list);
                     }
 
                     if (!instr.Matches(InstructionType.BoundsCheck)
@@ -726,55 +744,66 @@ namespace SharpPeg.Runner.ILRunner
                     return null;
                 }
 
-                var charRanges = loopInstructions
-                    .Where(instr => instr.Type == InstructionType.Char)
-                    .SelectMany(instr => method.CharacterRanges.Skip(instr.Data1).Take(instr.Data2 - instr.Data1))
+                // Remove all offsets where a character class containing multiple character ranges is used
+
+                var rangeSequences = charRanges
+                    .Select(list => (IReadOnlyList<(short offset, List<Common.CharRange> range)>)list
+                        .Select(x => (x.Offset, method.CharacterRanges.Skip(x.Data1).Take(x.Data2 - x.Data1).ToList()))
+                        .ToList()
+                    )
                     .ToList();
 
+                //foreach(var offset in rangeSequences.SelectMany(seq => seq.Select(item => item.Offset)).ToList())
+                //{
+                //    if (rangeSequences.Any(seq => !seq.Any(item => item.Offset == offset)))
+                //    {
+                //        // We don't have a matching case for this offset for at least one instance, so we need to quit!
+
+                //    }
+                //}
+
                 // TODO: Check if we can generate an efficient matching mask (i.e. some bits that are equal in all of the characters)
-                if(charRanges.Sum(range => range.Max - range.Min + 1) > 4)
-                {
-                    return null;
-                }
 
                 // Additional conditions for now that are not really needed:
-                var lookupOffset = loopInstructions.First(item => item.Type == InstructionType.Char).Offset;
-                if(!loopInstructions.All(instr => (instr.Type != InstructionType.Char || instr.Offset == lookupOffset)))
+                if(rangeSequences.Any(seq => seq.Count() == 0) || rangeSequences.Count == 0)
                 {
                     return null;
                 }
 
-                var bounds = 0;
-                var advanced = 0;
-                foreach(var instr in loopInstructions)
-                {
-                    if(instr.Matches(InstructionType.BoundsCheck, out var _, out var offset) && offset + advanced > bounds)
-                    {
-                        bounds = offset + advanced;
-                    } else if(instr.Matches(InstructionType.Advance, out var _, out var advanceOffset))
-                    {
-                        advanced += advanceOffset;
-                    }
-                }
-
-                var chars = new List<char>();
-                foreach(var range in charRanges)
-                {
-                    for (var i = range.Min; i <= range.Max; i++)
-                    {
-                        chars.Add(i);
-                    }
-                }
-
-                if (chars.Count > 8)
-                {
-                    return null;
-                }
-
-                return new CharScanInfo(bounds, lookupOffset, chars);
+                return new CharScanInfo(rangeSequences);
             }
 
             return null;
+        }
+
+        private bool LabelIsReachedWithoutNonTrivials(IReadOnlyList<Instruction> instructions, int pos, ushort label)
+        {
+            for(var i = 0; i < 8; i++)
+            {
+                switch(instructions[pos].Type)
+                {
+                    case InstructionType.Advance:
+                    case InstructionType.BoundsCheck:
+                        pos += 1;
+                        break;
+                    case InstructionType.Jump:
+                        pos = GetLabelPosition(instructions, instructions[pos].Label);
+                        break;
+                    case InstructionType.MarkLabel:
+                        if (instructions[pos].Label == label)
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            pos++;
+                        }
+                        break;
+                    default: return false;
+                }
+            }
+
+            return false;
         }
 
         private List<Instruction> FindChainAt(IReadOnlyList<Instruction> instructions, Method method, short offset, int i, out char min, out char max, out ushort lastLabel, out int coverage)

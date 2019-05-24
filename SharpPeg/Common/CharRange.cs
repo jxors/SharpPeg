@@ -10,6 +10,8 @@ namespace SharpPeg.Common
 
         public char Max { get; }
 
+        public int Count => Max - Min + 1;
+
         public CharRange(char min, char max)
         {
             if(min > max)

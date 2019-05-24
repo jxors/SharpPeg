@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SharpPeg.Common;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
@@ -11,14 +12,12 @@ namespace SharpPeg.Runner.ILRunner
 {
     public class CharScanInfo
     {
-        public IReadOnlyList<char> SearchFor { get; }
-        public int StartOffset { get; }
-        public int Bounds { get; }
+        public IReadOnlyList<IReadOnlyList<(short offset, List<CharRange>)>> SearchFor { get; }
 
-        public CharScanInfo(int bounds, int startOffset, IReadOnlyList<char> searchFor)
+        public int MaxOffset => SearchFor.Max(seq => seq.Max(item => item.offset));
+
+        public CharScanInfo(IReadOnlyList<IReadOnlyList<(short offset, List<CharRange>)>> searchFor)
         {
-            this.Bounds = bounds;
-            this.StartOffset = startOffset;
             this.SearchFor = searchFor;
         }
 
@@ -64,40 +63,69 @@ namespace SharpPeg.Runner.ILRunner
         private void GenerateScanLoopAvx2(ILGenerator generator, LocalBuilder positionLocal, LocalBuilder endLocal)
         {
 #if NET_CORE_30
-            var masks = SearchFor.Select(m => generator.DeclareLocal(typeof(Vector256<ushort>))).ToList();
+            //var masks = SearchFor.Select(m => generator.DeclareLocal(typeof(Vector256<ushort>))).ToList();
             var loopCondition = generator.DefineLabel();
             var loopBody = generator.DefineLabel();
             var end = generator.DefineLabel();
             var zeroes = generator.DeclareLocal(typeof(int));
             var line = generator.DeclareLocal(typeof(Vector256<ushort>));
             var x = generator.DeclareLocal(typeof(Vector256<byte>));
+            var maskLocal = generator.DeclareLocal(typeof(Vector256<ushort>));
 
-            foreach(var (mask, c) in masks.Zip(SearchFor))
-            {
-                generator.Emit(OpCodes.Ldc_I4, c);
-                generator.EmitCall(OpCodes.Call, typeof(Vector256).GetMethod("Create", new[] { typeof(char) }), null);
-                generator.Emit(OpCodes.Stloc, mask);
-            }
+            var cleanedSearchFor = CleanupSearchFor();
+            //foreach (var (mask, c) in masks.Zip(cleanedSearchFor))
+            //{
+            //    generator.Emit(OpCodes.Ldc_I4, c);
+            //    generator.EmitCall(OpCodes.Call, typeof(Vector256).GetMethod("Create", new[] { typeof(char) }), null);
+            //    generator.Emit(OpCodes.Stloc, mask);
+            //}
 
             generator.Emit(OpCodes.Br, loopCondition);
             generator.MarkLabel(loopBody);
 
-            generator.Emit(OpCodes.Ldloc, positionLocal);
-            generator.EmitCall(OpCodes.Call, typeof(Avx).GetMethod("LoadVector256", new[] { typeof(byte*) }), null);
-            generator.EmitCall(OpCodes.Call, typeof(Vector256).GetMethod("As").MakeGenericMethod(typeof(byte), typeof(ushort)), null);
-            generator.Emit(OpCodes.Stloc, line);
-
-            foreach (var mask in masks)
+            foreach (var seq in cleanedSearchFor)
             {
-                // x = (line ^ mask)
-                generator.Emit(OpCodes.Ldloc, line);
-                generator.Emit(OpCodes.Ldloc, mask);
-                generator.EmitCall(OpCodes.Call, typeof(Avx2).GetMethod("CompareEqual", new[] { typeof(Vector256<ushort>), typeof(Vector256<ushort>) }), null);
-                generator.EmitCall(OpCodes.Call, typeof(Vector256).GetMethod("As").MakeGenericMethod(typeof(ushort), typeof(byte)), null);
-                generator.EmitCall(OpCodes.Call, typeof(Avx2).GetMethod("MoveMask", new[] { typeof(Vector256<byte>) }), null);
+                foreach (var pair in seq)
+                {
+                    generator.Emit(OpCodes.Ldloc, positionLocal);
+                    generator.Emit(OpCodes.Ldc_I4, pair.offset * 2);
+                    generator.Emit(OpCodes.Conv_I);
+                    generator.Emit(OpCodes.Add);
+                    generator.EmitCall(OpCodes.Call, typeof(Avx).GetMethod("LoadVector256", new[] { typeof(byte*) }), null);
+                    generator.EmitCall(OpCodes.Call, typeof(Vector256).GetMethod("As").MakeGenericMethod(typeof(byte), typeof(ushort)), null);
+                    generator.Emit(OpCodes.Stloc, line);
+
+                    foreach (var range in pair.Item2)
+                    {
+                        for (var c = range.Min; c <= range.Max; c++)
+                        {
+                            generator.Emit(OpCodes.Ldloc, line);
+                            generator.Emit(OpCodes.Ldc_I4, c);
+                            generator.EmitCall(OpCodes.Call, typeof(Vector256).GetMethod("Create", new[] { typeof(char) }), null);
+                            generator.EmitCall(OpCodes.Call, typeof(Avx2).GetMethod("CompareEqual", new[] { typeof(Vector256<ushort>), typeof(Vector256<ushort>) }), null);
+                            generator.EmitCall(OpCodes.Call, typeof(Vector256).GetMethod("As").MakeGenericMethod(typeof(ushort), typeof(byte)), null);
+                            generator.EmitCall(OpCodes.Call, typeof(Avx2).GetMethod("MoveMask", new[] { typeof(Vector256<byte>) }), null);
+                        }
+
+                        for (var c = range.Min; c <= range.Max - 1; c++)
+                        {
+                            generator.Emit(OpCodes.Or);
+                        }
+                    }
+
+                    foreach (var range in pair.Item2.Skip(1))
+                    {
+                        generator.Emit(OpCodes.Or);
+                    }
+                }
+
+                foreach (var pair in seq.Skip(1))
+                {
+                    generator.Emit(OpCodes.And);
+                }
             }
 
-            foreach (var mask in masks.Skip(1))
+            foreach (var _ in cleanedSearchFor.Skip(1))
             {
                 generator.Emit(OpCodes.Or);
             }
@@ -189,7 +217,6 @@ namespace SharpPeg.Runner.ILRunner
         */
         private void GenerateScanLoopBase(ILGenerator generator, LocalBuilder positionLocal, LocalBuilder endLocal)
         {
-            var masks = SearchFor.Select(c => ~(c | ((ulong)c << 16) | ((ulong)c << 32) | ((ulong)c << 48)));
             var loopCondition = generator.DefineLabel();
             var loopBody = generator.DefineLabel();
             var end = generator.DefineLabel();
@@ -200,34 +227,63 @@ namespace SharpPeg.Runner.ILRunner
             generator.Emit(OpCodes.Br, loopCondition);
             generator.MarkLabel(loopBody);
 
-            generator.Emit(OpCodes.Ldloc, positionLocal);
-            generator.Emit(OpCodes.Ldind_I8);
-            generator.Emit(OpCodes.Stloc, line);
-
-            foreach (var mask in masks)
+            var cleanedSearchFor = CleanupSearchFor();
+            foreach (var seq in cleanedSearchFor)
             {
-                // x = (line ^ mask)
-                generator.Emit(OpCodes.Ldloc, line);
-                generator.Emit(OpCodes.Ldc_I8, (long)mask);
-                generator.Emit(OpCodes.Xor);
-                generator.Emit(OpCodes.Stloc, x);
+                foreach (var pair in seq)
+                {
+                    generator.Emit(OpCodes.Ldloc, positionLocal);
+                    generator.Emit(OpCodes.Ldc_I4, pair.offset * 2);
+                    generator.Emit(OpCodes.Conv_I);
+                    generator.Emit(OpCodes.Add);
+                    generator.Emit(OpCodes.Ldind_I8);
+                    generator.Emit(OpCodes.Stloc, line);
 
-                // (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU
-                generator.Emit(OpCodes.Ldloc, x);
-                generator.Emit(OpCodes.Ldc_I8, 0x7fff7fff7fff7fffL);
-                generator.Emit(OpCodes.And);
-                generator.Emit(OpCodes.Ldc_I8, 0x0001000100010001L);
-                generator.Emit(OpCodes.Add);
+                    foreach (var range in pair.Item2)
+                    {
+                        for (var c = range.Min; c <= range.Max; c++)
+                        {
+                            var mask = ~((ulong)c | ((ulong)c << 16) | ((ulong)c << 32) | ((ulong)c << 48));
+                            // x = (line ^ mask)
+                            generator.Emit(OpCodes.Ldloc, line);
+                            generator.Emit(OpCodes.Ldc_I8, (long)mask);
+                            generator.Emit(OpCodes.Xor);
+                            generator.Emit(OpCodes.Stloc, x);
 
-                // (x & 0x8000800080008000LU)
-                generator.Emit(OpCodes.Ldloc, x);
-                generator.Emit(OpCodes.Ldc_I8, unchecked((long)0x8000800080008000L));
-                generator.Emit(OpCodes.And);
+                            // (x & 0x7fff7fff7fff7fffLU) + 0x0001000100010001LU
+                            generator.Emit(OpCodes.Ldloc, x);
+                            generator.Emit(OpCodes.Ldc_I8, 0x7fff7fff7fff7fffL);
+                            generator.Emit(OpCodes.And);
+                            generator.Emit(OpCodes.Ldc_I8, 0x0001000100010001L);
+                            generator.Emit(OpCodes.Add);
 
-                generator.Emit(OpCodes.And);
+                            // (x & 0x8000800080008000LU)
+                            generator.Emit(OpCodes.Ldloc, x);
+                            generator.Emit(OpCodes.Ldc_I8, unchecked((long)0x8000800080008000L));
+                            generator.Emit(OpCodes.And);
+
+                            generator.Emit(OpCodes.And);
+                        }
+
+                        for (var c = range.Min; c <= range.Max - 1; c++)
+                        {
+                            generator.Emit(OpCodes.Or);
+                        }
+                    }
+
+                    foreach (var range in pair.Item2.Skip(1))
+                    {
+                        generator.Emit(OpCodes.Or);
+                    }
+                }
+
+                foreach (var pair in seq.Skip(1))
+                {
+                    generator.Emit(OpCodes.And);
+                }
             }
 
-            foreach (var mask in masks.Skip(1))
+            foreach (var _ in cleanedSearchFor.Skip(1))
             {
                 generator.Emit(OpCodes.Or);
             }
@@ -274,11 +330,28 @@ namespace SharpPeg.Runner.ILRunner
             //// if position < endPosition, loop
             generator.MarkLabel(loopCondition);
             generator.Emit(OpCodes.Ldloc, positionLocal);
+            generator.Emit(OpCodes.Ldc_I4, MaxOffset * 2 + 8);
+            generator.Emit(OpCodes.Conv_I);
+            generator.Emit(OpCodes.Add);
             generator.Emit(OpCodes.Ldloc, endLocal);
             generator.Emit(OpCodes.Clt_Un);
             generator.Emit(OpCodes.Brtrue, loopBody);
 
             generator.MarkLabel(end);
+        }
+
+        private IReadOnlyList<IReadOnlyList<(short offset, List<CharRange>)>> CleanupSearchFor()
+        {
+            var offsets = SearchFor.SelectMany(seq => seq.Select(x => x.offset)).ToList();
+
+            // Remove offsets that don't occur in each case
+            offsets.RemoveAll(offset => SearchFor.Any(seq => !seq.Any(item => item.offset == offset)));
+
+            // Remove everything but the smallest and biggest offset
+            var min = offsets.Min();
+            var max = offsets.Max();
+
+            return SearchFor.Select(seq => seq.Where(x => x.offset == min || x.offset == max).ToList()).ToList();
         }
     }
 }
