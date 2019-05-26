@@ -130,7 +130,7 @@ namespace SharpPeg.Optimizations.Default.Analyzers
                                             ||
                                             (jumpingInstruction.Type == InstructionType.Call && Context.FailureLabelMap[jumpingInstruction.Data2].Mapping.Any(item => item.jumpTarget == instruction.Label)))
                                         {
-                                            result = CheckCharsInternalHelper(true, i, hasHitLabel).UnionWith(result);
+                                            result = CheckCharsInternalHelper(jumpingInstruction.Type != InstructionType.Jump, i - (jumpingInstruction.Type == InstructionType.Jump ? 1 : 0), hasHitLabel).UnionWith(result);
                                             if (!result.CanChange)
                                             {
                                                 return result;
@@ -232,7 +232,7 @@ namespace SharpPeg.Optimizations.Default.Analyzers
                                             ||
                                             (jumpingInstruction.Type == InstructionType.Call && Context.FailureLabelMap[jumpingInstruction.Data2].Mapping.Any(item => item.jumpTarget == instruction.Label)))
                                         {
-                                            result = CheckBoundsInternalHelper(true, i, hasHitLabel).UnionWith(result);
+                                            result = CheckBoundsInternalHelper(jumpingInstruction.Type != InstructionType.Jump, i - (jumpingInstruction.Type == InstructionType.Jump ? 1 : 0), hasHitLabel).UnionWith(result);
                                             if (!result.CanChange)
                                             {
                                                 return result;

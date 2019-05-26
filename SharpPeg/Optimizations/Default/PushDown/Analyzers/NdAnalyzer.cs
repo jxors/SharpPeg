@@ -7,7 +7,9 @@ using System.Text;
 
 namespace SharpPeg.Optimizations.Default.Analyzers
 {
-    // TODO: Unused!
+    /// <summary>
+    /// Determines if execution from two different starting points (posA and posB) converges to the same end result.
+    /// </summary>
     public class NdAnalyzer
     {
         private bool[] validPositionsForB;
