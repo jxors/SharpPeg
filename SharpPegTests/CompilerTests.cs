@@ -179,6 +179,7 @@ namespace SharpPegTests
             MustNotMatch(p, "++++");
         }
 
+
         private void MustMatch(Operator p, string data)
         {
             var result = Match(p, data);
@@ -208,6 +209,7 @@ namespace SharpPegTests
             PatternCompiler.Default,
             new PatternCompiler(new Compiler(), new DefaultOptimizer(), new ILJitter() { EnableMemoization = true, EnableCaptureMemoization = false }),
             new PatternCompiler(new Compiler(), new DefaultOptimizer(), new ILJitter() { EnableMemoization = true, EnableCaptureMemoization = true }),
+            new PatternCompiler(new Compiler() { InlinePatterns = false }, new DefaultOptimizer(), new ILJitter() { EnableMemoization = true, EnableCaptureMemoization = true }),
             new PatternCompiler(new Compiler(), new DefaultOptimizer(), new InterpreterJitter()),
         };
 

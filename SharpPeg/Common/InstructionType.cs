@@ -41,8 +41,8 @@ namespace SharpPeg.Common
         Advance,
 
         /// <summary>
-        /// Return _ _ 0 _ (Fail)
-        /// Return _ _ 1 _ (Success)
+        /// Return _ _ 0 _ (Success)
+        /// Return _ _ X _ (where X is non-zero: Failure)
         /// </summary>
         Return,
 

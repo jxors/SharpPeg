@@ -60,7 +60,7 @@ namespace SharpPeg.Compilation
                             throw new NotImplementedException();
                         }
 
-                        context.Add(Instruction.Call(instruction.Label, (ushort)patternId));
+                        context.Add(Instruction.Call(instruction.Data2, (ushort)patternId));
                     }
                     else
                     {
