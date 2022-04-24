@@ -5,7 +5,7 @@ A C# implementation of Parsing Expression Grammars, intended to be used as a rep
 The `peg-match` tool uses SharpPeg to implement a tool similar to `grep`, using PEGs instead of regular expressions.
 
 ## Installation
-The latest stable release of `peg-match` can be downloaded from [https://github.com/Jos635/SharpPeg/releases](the releases). Extract the folder corresponding with your platform of choice to a directory, for example, for Windows you should extract the `win\x64` folder. From the terminal, `cd` to this folder and run `./peg-match`.
+The latest stable release of `peg-match` can be downloaded from [the releases page](https://github.com/Jos635/SharpPeg/releases). Extract the folder corresponding with your platform of choice to a directory, for example, for Windows you should extract the `win\x64` folder. From the terminal, `cd` to this folder and run `./peg-match`.
 
 Note: on linux, you might still need to install some dependencies. For example, Ubuntu requires libunwind to be installed:
 ```
